@@ -1,0 +1,91 @@
+WHEAT CULTIVATION GUIDE — NORTH INDIA (RABI SEASON)
+Source: ICAR-Indian Institute of Wheat and Barley Research
+
+1. INTRODUCTION
+Wheat (Triticum aestivum) is the most important rabi crop of India. India is the second largest wheat producer in the world. Uttar Pradesh, Punjab, Haryana, Madhya Pradesh, and Rajasthan are the major wheat-growing states.
+
+2. SOIL AND CLIMATE
+Wheat grows best in well-drained loamy soils with a pH of 6.0–7.5. It requires cool, moist weather during growth and warm, dry weather for grain development and ripening. The ideal temperature during sowing is 20–25°C, and 14–18°C during the vegetative stage.
+
+3. SOWING TIME
+Timely sowing: October 15 to November 15 (North India)
+Late sowing: November 15 to December 15 (results in 1–1.5 quintal/acre yield loss per week of delay)
+Do not sow after December 25 — yield losses become severe.
+
+4. VARIETIES
+HD-2967: High yielding, rust-resistant, recommended for IGP plains.
+PBW-343: Widely grown in Punjab and Haryana, good for chapati quality.
+GW-496: Suitable for Gujarat and Rajasthan.
+DBW-187: Latest release, high protein content, drought tolerant.
+
+5. SEED RATE AND TREATMENT
+Seed rate: 40–45 kg/acre for timely sowing; 50 kg/acre for late sowing.
+Seed treatment: Treat seeds with Carboxin 37.5% + Thiram 37.5% @ 2.5 g/kg seed to prevent loose smut and seed-borne diseases.
+
+6. FERTILIZER MANAGEMENT (NPK)
+Timely sown irrigated wheat:
+- Nitrogen: 120 kg/ha (split in 3 doses — 50% basal, 25% at first irrigation, 25% at second irrigation)
+- Phosphorus: 60 kg/ha (full basal)
+- Potassium: 40 kg/ha (full basal)
+
+Late sown wheat:
+- Nitrogen: 80 kg/ha
+- Phosphorus: 40 kg/ha
+- Potassium: 30 kg/ha
+
+Micronutrients: Apply zinc sulphate @ 25 kg/ha if zinc deficiency is observed (yellowing of leaves, reduced tillering).
+
+7. IRRIGATION
+Crown root initiation (CRI) stage: 20–25 days after sowing — MOST CRITICAL irrigation.
+Tillering stage: 40–45 days after sowing.
+Jointing stage: 65–70 days.
+Flowering stage: 90–95 days.
+Grain filling: 105–110 days.
+Total irrigations: 4–6 depending on soil type and rainfall.
+
+8. PEST AND DISEASE MANAGEMENT
+
+8.1 Yellow Rust (Stripe Rust)
+Symptoms: Yellow stripes on leaves running parallel to midrib.
+Control: Spray Propiconazole 25 EC @ 0.1% or Tebuconazole 25.9% EC @ 0.1% at first appearance.
+
+8.2 Brown Rust (Leaf Rust)
+Symptoms: Orange-brown pustules on leaves.
+Control: Same fungicides as yellow rust. Spray at flag leaf stage.
+
+8.3 Aphids (Sitobion avenae)
+Symptoms: Yellowing and curling of leaves, honeydew deposits.
+Control: Spray Imidacloprid 17.8 SL @ 0.25 ml/litre or Dimethoate 30 EC @ 1.5 ml/litre.
+Economic Threshold Level (ETL): 5–10 aphids per tiller.
+
+8.4 Termites
+Control: Apply Chlorpyriphos 20 EC @ 4 litres/ha in irrigation water.
+
+9. HARVESTING
+Harvest when grain moisture content is 12–14%.
+Mechanical harvesting with combine harvester is recommended.
+Threshing loss should not exceed 1%.
+
+10. EXPECTED YIELD
+Timely sown, irrigated, high-input: 50–60 quintals/ha
+Late sown: 35–45 quintals/ha
+Rainfed conditions: 20–30 quintals/ha
+
+---
+
+GOVERNMENT SCHEMES FOR WHEAT FARMERS
+
+PM-KISAN (Pradhan Mantri Kisan Samman Nidhi):
+Farmers receive ₹6,000 per year in three equal installments of ₹2,000 each.
+Eligibility: Small and marginal farmers with landholding up to 2 hectares.
+Registration: pmkisan.gov.in or nearest CSC centre.
+
+PMFBY (Pradhan Mantri Fasal Bima Yojana):
+Crop insurance scheme. Premium: 1.5% of sum insured for rabi crops.
+Covers yield losses due to natural calamities, pests, and diseases.
+Register through your bank or cooperative society before the cutoff date.
+
+Soil Health Card Scheme:
+Free soil testing and health card provided by government.
+Contains recommendations for fertilizers and soil amendments.
+Contact your nearest Krishi Vigyan Kendra (KVK) for testing.

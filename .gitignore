@@ -1,0 +1,5 @@
+.env
+*outputs/*
+outputs/*
+outputs/gemma-farm-qlora/final/adapter_model.safetensors*
+outputs/gemma-farm-qlora/final/tokenizer.json*
