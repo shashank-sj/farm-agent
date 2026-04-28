@@ -92,11 +92,7 @@ EXAMPLE_QUESTIONS = [
     ["Where can I sell my wheat at the best price?", None],
 ]
 
-with gr.Blocks(
-    title="🌾 Farm Assistant AI",
-    theme=gr.themes.Soft(primary_hue="green", secondary_hue="emerald"),
-    css=CSS,
-) as demo:
+with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
 
     gr.Markdown("""
     # 🌾 Farm Assistant AI
@@ -114,7 +110,7 @@ with gr.Blocks(
                 height=520,
                 show_label=True,
                 avatar_images=("👨‍🌾", "🌾"),
-                bubble_full_width=False,
+                # bubble_full_width=False,  
             )
 
             with gr.Row():
@@ -206,4 +202,9 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        theme=gr.themes.Soft(primary_hue="green", secondary_hue="emerald"),
+        css=CSS,
+    )
