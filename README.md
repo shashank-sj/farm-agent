@@ -1,3 +1,16 @@
+---
+title: Farm Agent
+emoji: 👁
+colorFrom: red
+colorTo: purple
+sdk: gradio
+sdk_version: 6.13.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: one tool for all your farm queries
+---
+
 # 🌾 Farm Agent — Intelligent Multi-Modal Farm Assistant
 
 A production-grade **LangGraph agent** combining RAG, vision, web search, and yield prediction to help Indian farmers with any farming query.
@@ -39,7 +52,7 @@ User Input (text + optional image)
 ## Tools
 
 | Tool | Powered By | Handles |
-|------|-----------|---------|
+|------|-----------|---------| 
 | 📚 `farm_rag` | FAISS + BM25 + Gemini | Crop cultivation, soil, pests, schemes |
 | 👁️ `farm_vision` | YOLOv8s-cls (31 classes) | Plant disease + pest photo analysis |
 | 🔍 `farm_web_search` | Tavily / DuckDuckGo | Live prices, laws, mandi rates, eNAM |
