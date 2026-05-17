@@ -118,7 +118,6 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
                 height=520,
                 show_label=True,
                 avatar_images=("👨‍🌾", "🌾"),
-                type="messages",
             )
 
             with gr.Row():

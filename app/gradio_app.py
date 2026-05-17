@@ -117,7 +117,6 @@ with gr.Blocks(
                 height=520,
                 show_label=True,
                 avatar_images=("👨‍🌾", "🌾"),
-                type="messages",
             )
 
             with gr.Row():
