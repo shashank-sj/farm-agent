@@ -15,8 +15,8 @@ short_description: one tool for all your farm queries
 
 A production-grade **LangGraph agent** combining RAG, vision, web search, and yield prediction to help Indian farmers with any farming query.
 
-[![Demo](https://img.shields.io/badge/🤗-Live_Demo-yellow)](https://huggingface.co/spaces/your-username/farm-agent)
-[![CI/CD](https://github.com/yourusername/farm-agent/actions/workflows/ci_cd.yml/badge.svg)]()
+[![Demo](https://img.shields.io/badge/🤗-Live_Demo-yellow)](https://huggingface.co/spaces/shank-j/farm-agent)
+[![CI/CD](https://github.com/shashank-sj/farm-agent/actions/workflows/ci_cd.yml/badge.svg)](https://github.com/shashank-sj/farm-agent/actions/workflows/ci_cd.yml)
 
 ---
 
@@ -61,7 +61,7 @@ User Input (text + optional image)
 ## Quickstart
 
 ```bash
-git clone https://github.com/yourusername/farm-agent
+git clone https://github.com/shashank-sj/farm-agent
 cd farm-agent
 pip install -r requirements.txt
 cp .env.example .env   # add your keys

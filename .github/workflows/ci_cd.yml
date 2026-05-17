@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  HF_SPACE: your-username/farm-agent   # ← update this
+  HF_SPACE: shank-j/farm-agent
 
 jobs:
   test:
