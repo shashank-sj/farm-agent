@@ -211,11 +211,22 @@ class FarmAgent:
         # Build message history
         messages = []
         if history:
-            for human, ai in history:
-                if human:
-                    messages.append(HumanMessage(content=human))
-                if ai:
-                    messages.append(AIMessage(content=ai))
+            for entry in history:
+                if isinstance(entry, dict):
+                    # New Gradio 5.x format: {"role": "user"/"assistant", "content": "..."}
+                    role = entry.get("role", "")
+                    content = entry.get("content", "")
+                    if role == "user" and content:
+                        messages.append(HumanMessage(content=content))
+                    elif role == "assistant" and content:
+                        messages.append(AIMessage(content=content))
+                else:
+                    # Legacy tuple format: (human, ai)
+                    human, ai = entry
+                    if human:
+                        messages.append(HumanMessage(content=human))
+                    if ai:
+                        messages.append(AIMessage(content=ai))
 
         messages.append(HumanMessage(content=message))
 
@@ -240,11 +251,20 @@ class FarmAgent:
         """Stream the agent's response token by token."""
         messages = []
         if history:
-            for human, ai in history:
-                if human:
-                    messages.append(HumanMessage(content=human))
-                if ai:
-                    messages.append(AIMessage(content=ai))
+            for entry in history:
+                if isinstance(entry, dict):
+                    role = entry.get("role", "")
+                    content = entry.get("content", "")
+                    if role == "user" and content:
+                        messages.append(HumanMessage(content=content))
+                    elif role == "assistant" and content:
+                        messages.append(AIMessage(content=content))
+                else:
+                    human, ai = entry
+                    if human:
+                        messages.append(HumanMessage(content=human))
+                    if ai:
+                        messages.append(AIMessage(content=ai))
         messages.append(HumanMessage(content=message))
 
         initial_state = AgentState(

@@ -70,7 +70,10 @@ def chat(message: str, image, history: list):
     except Exception as e:
         response = f"Error: {str(e)}. Please try again."
 
-    history = history + [(message, response)]
+    history = history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": response},
+    ]
     return history, history, ""
 
 
@@ -115,7 +118,7 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
                 height=520,
                 show_label=True,
                 avatar_images=("👨‍🌾", "🌾"),
-                # bubble_full_width=False,  
+                type="messages",
             )
 
             with gr.Row():
