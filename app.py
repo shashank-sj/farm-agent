@@ -14,28 +14,33 @@ load_dotenv()
 # ── Load Agent ─────────────────────────────────────────────────────────────────
 
 agent = None
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-def load_agent(api_key: str):
+def load_agent():
     global agent
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not set in .env file.")
     from src.agent.graph import FarmAgent
     agent = FarmAgent(
-        gemini_api_key=api_key,
+        gemini_api_key=GEMINI_API_KEY,
         use_local_llm=False,   # Set True if Gemma weights available
     )
-    return "✅ Farm Assistant ready! Ask me anything about farming."
+
+# Auto-initialize agent on startup
+try:
+    load_agent()
+except Exception as _e:
+    print(f"[WARNING] Could not auto-load agent: {_e}")
 
 
 # ── Chat Function ──────────────────────────────────────────────────────────────
 
-def chat(message: str, image, history: list, api_key: str):
+def chat(message: str, image, history: list):
     global agent
-
-    if not api_key:
-        return history, history, "Please enter your Gemini API key in the sidebar."
 
     if agent is None:
         try:
-            load_agent(api_key)
+            load_agent()
         except Exception as e:
             return history, history, f"Failed to load agent: {e}"
 
@@ -134,17 +139,11 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
                 label="💡 Example questions",
             )
 
-        # ── Right: Settings ─────────────────────────────────────────────────
+        # ── Right: Info Panel ────────────────────────────────────────────────
         with gr.Column(scale=1):
-            gr.Markdown("### ⚙️ Setup")
-            api_key = gr.Textbox(
-                label="Gemini API Key",
-                type="password",
-                value=os.getenv("GEMINI_API_KEY", ""),
-                info="Get free key at aistudio.google.com",
-            )
-            init_btn = gr.Button("🚀 Initialize Agent", variant="primary")
-            status = gr.Textbox(label="Status", interactive=False, lines=2)
+            gr.Markdown("### ⚙️ Status")
+            agent_status = "✅ Agent ready" if agent is not None else "⚠️ Agent not loaded — check GEMINI_API_KEY in .env"
+            gr.Markdown(agent_status)
 
             gr.Markdown("---")
             gr.Markdown("### 🛠️ Tools Available")
@@ -168,22 +167,15 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
     # State
     history_state = gr.State([])
 
-    # Events
-    init_btn.click(
-        fn=load_agent,
-        inputs=[api_key],
-        outputs=[status],
-    )
-
     send_btn.click(
         fn=chat,
-        inputs=[msg_input, image_input, history_state, api_key],
+        inputs=[msg_input, image_input, history_state],
         outputs=[chatbot, history_state, msg_input],
     )
 
     msg_input.submit(
         fn=chat,
-        inputs=[msg_input, image_input, history_state, api_key],
+        inputs=[msg_input, image_input, history_state],
         outputs=[chatbot, history_state, msg_input],
     )
 

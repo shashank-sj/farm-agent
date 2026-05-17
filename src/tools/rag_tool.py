@@ -1,1 +1,1 @@
-from src.tools.tools import FarmRagTool
+from src.tools.tools import FarmRAGTool

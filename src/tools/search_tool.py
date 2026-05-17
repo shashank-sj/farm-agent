@@ -1,1 +1,1 @@
-from src.tools.tools import FarmSearchTool
+from src.tools.tools import FarmWebSearchTool

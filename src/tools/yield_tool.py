@@ -1,1 +1,1 @@
-from src.tools.tools import FarmYieldTool
+from src.tools.tools import YieldPredictionTool
