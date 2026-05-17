@@ -88,9 +88,9 @@ class FarmAgent:
             logger.info(f"Loading fine-tuned Gemma from {llm_model_path}")
             self.llm = self._load_local_llm(llm_model_path)
         else:
-            logger.info("Using Gemini 1.5 Flash as agent LLM")
+            logger.info("Using Gemini 2.0 Flash as agent LLM")
             self.llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
+                model="gemini-2.0-flash",
                 temperature=0.2,
                 convert_system_message_to_human=True,
             )
