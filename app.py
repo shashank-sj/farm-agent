@@ -68,7 +68,11 @@ def chat(message: str, image, history: list):
             history=history,
         )
     except Exception as e:
-        response = f"Error: {str(e)}. Please try again."
+        err = str(e)
+        if "429" in err or "RESOURCE_EXHAUSTED" in err:
+            response = "⚠️ Too many requests. Please wait a moment and try again."
+        else:
+            response = f"Something went wrong. Please try again."
 
     history = history + [
         {"role": "user", "content": message},
@@ -86,9 +90,231 @@ def clear_chat():
 # ── Gradio UI ──────────────────────────────────────────────────────────────────
 
 CSS = """
-.gradio-container { max-width: 1000px; margin: auto; }
-.title { text-align: center; color: #2d5a1b; }
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ── Global Reset ─────────────────────────────────────────── */
+* { image-rendering: pixelated; }
+
+.gradio-container {
+    max-width: 1100px !important;
+    margin: auto !important;
+    background: #0a0a0a !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 10px !important;
+}
+
+body, .dark {
+    background: #0a0a0a !important;
+}
+
+/* ── Pixel border mixin via box-shadow ────────────────────── */
+.block, .gr-box, .gr-panel, .gr-form {
+    background: #111 !important;
+    border: 4px solid #39ff14 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0px #1a7a00, inset 0 0 20px rgba(57,255,20,0.05) !important;
+}
+
+/* ── Headings ─────────────────────────────────────────────── */
+h1, h2, h3, h4, .gr-markdown h1, .gr-markdown h2, .gr-markdown h3 {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #39ff14 !important;
+    text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14 !important;
+    letter-spacing: 2px !important;
+}
+
+/* ── Body text ────────────────────────────────────────────── */
+p, span, label, .gr-markdown p, .gr-markdown li {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #a0ff70 !important;
+    font-size: 9px !important;
+    line-height: 1.8 !important;
+}
+
+/* ── Chatbot ──────────────────────────────────────────────── */
+.chatbot, .gr-chatbot {
+    background: #060f04 !important;
+    border: 4px solid #39ff14 !important;
+    border-radius: 0 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+}
+
+/* User bubble */
+.message.user, [data-testid="user"] .message {
+    background: #003300 !important;
+    border: 3px solid #39ff14 !important;
+    border-radius: 0 !important;
+    color: #39ff14 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    box-shadow: 3px 3px 0 #1a7a00 !important;
+}
+
+/* Bot bubble */
+.message.bot, [data-testid="bot"] .message {
+    background: #001a00 !important;
+    border: 3px solid #00cc44 !important;
+    border-radius: 0 !important;
+    color: #a0ff70 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    box-shadow: 3px 3px 0 #005522 !important;
+}
+
+/* ── Inputs ───────────────────────────────────────────────── */
+input, textarea, .gr-textbox textarea, .gr-textbox input {
+    background: #050f05 !important;
+    border: 3px solid #39ff14 !important;
+    border-radius: 0 !important;
+    color: #39ff14 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    caret-color: #39ff14 !important;
+}
+
+input:focus, textarea:focus {
+    box-shadow: 0 0 0 2px #39ff14, 0 0 15px #39ff14 !important;
+    outline: none !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: #2a6600 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+button, .gr-button {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    border-radius: 0 !important;
+    border: 3px solid #39ff14 !important;
+    background: #003300 !important;
+    color: #39ff14 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    box-shadow: 4px 4px 0 #1a7a00 !important;
+    transition: none !important;
+    cursor: pointer !important;
+    padding: 10px 14px !important;
+}
+
+button:hover, .gr-button:hover {
+    background: #39ff14 !important;
+    color: #000 !important;
+    box-shadow: 2px 2px 0 #1a7a00 !important;
+    transform: translate(2px, 2px) !important;
+}
+
+button:active, .gr-button:active {
+    transform: translate(4px, 4px) !important;
+    box-shadow: none !important;
+}
+
+/* Primary buttons */
+button.primary, .gr-button-primary {
+    background: #004400 !important;
+    border-color: #39ff14 !important;
+    color: #39ff14 !important;
+    box-shadow: 4px 4px 0 #39ff14 !important;
+}
+
+/* Secondary buttons */
+button.secondary, .gr-button-secondary {
+    background: #1a0000 !important;
+    border-color: #ff4444 !important;
+    color: #ff4444 !important;
+    box-shadow: 4px 4px 0 #880000 !important;
+}
+button.secondary:hover, .gr-button-secondary:hover {
+    background: #ff4444 !important;
+    color: #000 !important;
+}
+
+/* ── Labels ───────────────────────────────────────────────── */
+.gr-block-label, .label-wrap, label {
+    color: #39ff14 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    border-bottom: 2px solid #39ff14 !important;
+    padding-bottom: 4px !important;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #39ff14; border: 2px solid #0a0a0a; }
+::-webkit-scrollbar-thumb:hover { background: #a0ff70; }
+
+/* ── Image upload ─────────────────────────────────────────── */
+.gr-image, .image-container {
+    border: 4px dashed #39ff14 !important;
+    border-radius: 0 !important;
+    background: #060f04 !important;
+}
+
+/* ── Examples ─────────────────────────────────────────────── */
+.gr-examples .gr-sample-textbox {
+    background: #001a00 !important;
+    border: 2px solid #1a7a00 !important;
+    border-radius: 0 !important;
+    color: #a0ff70 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+}
+
+.gr-examples .gr-sample-textbox:hover {
+    border-color: #39ff14 !important;
+    background: #003300 !important;
+}
+
+/* ── Dividers ─────────────────────────────────────────────── */
+hr {
+    border: none !important;
+    border-top: 3px solid #39ff14 !important;
+    box-shadow: 0 0 8px #39ff14 !important;
+    margin: 12px 0 !important;
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
 footer { display: none !important; }
+
+/* ── Scanline overlay effect ──────────────────────────────── */
+.gradio-container::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* ── CRT glow on container ────────────────────────────────── */
+.gradio-container::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    box-shadow: inset 0 0 100px rgba(57,255,20,0.04);
+    pointer-events: none;
+    z-index: 9998;
+}
+
+/* ── Info text ────────────────────────────────────────────── */
+.gr-info, .gr-form .gr-info {
+    color: #2a6600 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 7px !important;
+}
 """
 
 EXAMPLE_QUESTIONS = [
@@ -100,14 +326,16 @@ EXAMPLE_QUESTIONS = [
     ["Where can I sell my wheat at the best price?", None],
 ]
 
-with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
+with gr.Blocks(title="🌾 FARM QUEST AI", theme=gr.themes.Base(), css=CSS) as demo:
 
     gr.Markdown("""
-    # 🌾 Farm Assistant AI
-    *Your intelligent farming companion — powered by RAG + Vision + Web Search*
-    
-    Ask anything about **crops, soil, pests, diseases, laws, markets, and schemes**.
-    Upload a **plant photo** for instant disease/pest identification.
+    # 🌾 FARM QUEST AI
+    ### >>> LEVEL 1: CROP MASTER <<<
+    *RAG + VISION + WEB SEARCH ENGINE LOADED*
+
+    > INSERT QUESTION TO CONTINUE...
+
+    QUERY crops · soil · pests · diseases · laws · markets
     """)
 
     with gr.Row():
@@ -127,7 +355,7 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
                     scale=5,
                     container=False,
                 )
-                send_btn = gr.Button("Send 🌱", variant="primary", scale=1)
+                send_btn = gr.Button("[ SEND >> ]", variant="primary", scale=1)
 
             image_input = gr.Image(
                 type="pil",
@@ -143,28 +371,33 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
 
         # ── Right: Info Panel ────────────────────────────────────────────────
         with gr.Column(scale=1):
-            gr.Markdown("### ⚙️ Status")
+            gr.Markdown("### [ STATUS ]")
             agent_status = "✅ Agent ready" if agent is not None else "⚠️ Agent not loaded — check GEMINI_API_KEY in .env"
             gr.Markdown(agent_status)
 
             gr.Markdown("---")
-            gr.Markdown("### 🛠️ Tools Available")
+            gr.Markdown("### [ TOOLS ]")
             gr.Markdown("""
-            - 📚 **RAG** — Farm knowledge base
-            - 👁️ **Vision** — Disease & pest detection  
-            - 🔍 **Web Search** — Live prices & laws
-            - 📊 **Yield Predictor** — Crop estimates
+            > RAG    — Knowledge base
+
+            > VISION — Pest scanner
+
+            > SEARCH — Live prices
+
+            > YIELD  — Crop calc
             """)
 
             gr.Markdown("---")
-            gr.Markdown("### 📋 Supported Crops")
+            gr.Markdown("### [ CROPS ]")
             gr.Markdown("""
-            Wheat, Rice, Tomato, Potato,  
-            Cotton, Sugarcane, Corn, Onion,  
-            Soybean, Mustard, and more
+            WHEAT · RICE · TOMATO
+
+            POTATO · COTTON · CORN
+
+            SUGARCANE · ONION · MORE
             """)
 
-            clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary")
+            clear_btn = gr.Button("[ RESET GAME ]", variant="secondary")
 
     # State
     history_state = gr.State([])
@@ -189,16 +422,10 @@ with gr.Blocks(title="🌾 Farm Assistant AI") as demo:
     gr.Markdown("""
     ---
     <center>
-    Built with LangGraph + YOLOv8 + FAISS + Gemini | 
-    Trained on PlantVillage + Agricultural Pests datasets
+    © FARM QUEST AI v1.0 | ENGINE: LangGraph+YOLOv8+FAISS+Gemini | DATASET: PlantVillage
     </center>
     """)
 
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        theme=gr.themes.Soft(primary_hue="green", secondary_hue="emerald"),
-        css=CSS,
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860)
