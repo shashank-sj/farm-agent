@@ -14,7 +14,7 @@ from pathlib import Path
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -73,27 +73,31 @@ class FarmAgent:
 
     def __init__(
         self,
-        gemini_api_key: str,
+        groq_api_key: str,
+        gemini_api_key: str = "",          # kept for RAG tool embeddings
         rag_index_path: str = "data/faiss_index",
         vision_model_path: str = "outputs/farm-vision/weights/best.pt",
-        llm_model_path: str = "outputs/gemma-farm-qlora/final",
-        use_local_llm: bool = False,
+        # llm_model_path: str = "outputs/gemma-farm-qlora/final",  # GPU required — disabled
+        # use_local_llm: bool = False,                              # GPU required — disabled
         max_steps: int = 10,
     ):
         self.max_steps = max_steps
-        os.environ["GOOGLE_API_KEY"] = gemini_api_key
+        if gemini_api_key:
+            os.environ["GOOGLE_API_KEY"] = gemini_api_key
 
-        # LLM — use fine-tuned Gemma if available, else Gemini fallback
-        if use_local_llm and Path(llm_model_path).exists():
-            logger.info(f"Loading fine-tuned Gemma from {llm_model_path}")
-            self.llm = self._load_local_llm(llm_model_path)
-        else:
-            logger.info("Using Gemini 2.0 Flash as agent LLM")
-            self.llm = ChatGoogleGenerativeAI(
-                model="gemini-2.0-flash",
-                temperature=0.2,
-                convert_system_message_to_human=True,
-            )
+        # LLM — Groq (CPU-friendly, free tier, fast)
+        logger.info("Using Groq llama-3.1-8b-instant as agent LLM")
+        self.llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            api_key=groq_api_key,
+            temperature=0.2,
+        )
+
+        # ── Fine-tuned Gemma (disabled — requires GPU) ──────────────────────
+        # if use_local_llm and Path(llm_model_path).exists():
+        #     logger.info(f"Loading fine-tuned Gemma from {llm_model_path}")
+        #     self.llm = self._load_local_llm(llm_model_path)
+        # ───────────────────────────────────────────────────────────────────
 
         # Tools
         self.rag_tool = FarmRAGTool(
@@ -115,25 +119,25 @@ class FarmAgent:
         self.graph = self._build_graph()
         logger.info("Farm Agent ready ✓")
 
-    def _load_local_llm(self, model_path: str):
-        """Load fine-tuned Gemma-2B as LangChain LLM."""
-        import torch
-        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-        from peft import PeftModel
-        from langchain_community.llms import HuggingFacePipeline
-
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        base = AutoModelForCausalLM.from_pretrained(
-            "google/gemma-2b-it",
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-        model = PeftModel.from_pretrained(base, model_path)
-        pipe = pipeline(
-            "text-generation", model=model, tokenizer=tokenizer,
-            max_new_tokens=512, temperature=0.2, do_sample=True,
-        )
-        return HuggingFacePipeline(pipeline=pipe)
+    # def _load_local_llm(self, model_path: str):
+    #     """Load fine-tuned Gemma-2B as LangChain LLM. Requires GPU."""
+    #     import torch
+    #     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+    #     from peft import PeftModel
+    #     from langchain_community.llms import HuggingFacePipeline
+    #
+    #     tokenizer = AutoTokenizer.from_pretrained(model_path)
+    #     base = AutoModelForCausalLM.from_pretrained(
+    #         "google/gemma-2b-it",
+    #         torch_dtype=torch.float16,
+    #         device_map="auto",
+    #     )
+    #     model = PeftModel.from_pretrained(base, model_path)
+    #     pipe = pipeline(
+    #         "text-generation", model=model, tokenizer=tokenizer,
+    #         max_new_tokens=512, temperature=0.2, do_sample=True,
+    #     )
+    #     return HuggingFacePipeline(pipeline=pipe)
 
     # ── Graph Nodes ────────────────────────────────────────────────────────────
 
