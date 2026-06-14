@@ -88,99 +88,100 @@ CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 /* ── Palette ──────────────────────────────────────────────────
-   bg:      #1a1209   (dark warm brown)
-   surface: #2b1f0e   (card background)
-   cream:   #f5e6c8   (primary text)
-   orange:  #ff8c00   (accent)
-   amber:   #ffb347   (secondary accent)
-   rust:    #cc4e00   (danger/secondary)
+   bg:      #fdf6ec   (light cream)
+   surface: #fff8f0   (card background)
+   orange:  #e86500   (primary text & accent)
+   amber:   #ff9500   (secondary accent)
+   rust:    #c94a00   (danger/secondary)
 ──────────────────────────────────────────────────────────────── */
 
 * { image-rendering: pixelated; }
 
 .gradio-container {
-    max-width: 1100px !important;
-    margin: auto !important;
-    background: #1a1209 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    background: #fdf6ec !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 10px !important;
+    box-sizing: border-box !important;
 }
 
-body, .dark { background: #1a1209 !important; }
+body, html { background: #fdf6ec !important; }
 
 /* ── Blocks ───────────────────────────────────────────────── */
 .block, .gr-box, .gr-panel, .gr-form {
-    background: #2b1f0e !important;
-    border: 4px solid #ff8c00 !important;
-    border-radius: 0 !important;
-    box-shadow: 4px 4px 0px #7a3d00, inset 0 0 20px rgba(255,140,0,0.04) !important;
+    background: #fff8f0 !important;
+    border: 3px solid #e86500 !important;
+    border-radius: 4px !important;
+    box-shadow: 3px 3px 0px #c94a00 !important;
 }
 
 /* ── Headings ─────────────────────────────────────────────── */
 h1, h2, h3, h4, .gr-markdown h1, .gr-markdown h2, .gr-markdown h3 {
     font-family: 'Press Start 2P', monospace !important;
-    color: #ff8c00 !important;
-    text-shadow: 0 0 10px #ff8c00, 0 0 20px #ffb347 !important;
+    color: #e86500 !important;
     letter-spacing: 2px !important;
 }
 
 /* ── Body text ────────────────────────────────────────────── */
 p, span, label, .gr-markdown p, .gr-markdown li {
     font-family: 'Press Start 2P', monospace !important;
-    color: #f5e6c8 !important;
+    color: #e86500 !important;
     font-size: 9px !important;
     line-height: 1.8 !important;
 }
 
 /* ── Chatbot ──────────────────────────────────────────────── */
 .chatbot, .gr-chatbot {
-    background: #120d06 !important;
-    border: 4px solid #ff8c00 !important;
-    border-radius: 0 !important;
+    background: #fff8f0 !important;
+    border: 3px solid #e86500 !important;
+    border-radius: 4px !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 9px !important;
 }
 
 /* User bubble */
 .message.user, [data-testid="user"] .message {
-    background: #3d2200 !important;
-    border: 3px solid #ff8c00 !important;
-    border-radius: 0 !important;
-    color: #ff8c00 !important;
+    background: #ffe0b2 !important;
+    border: 2px solid #e86500 !important;
+    border-radius: 4px !important;
+    color: #7a3000 !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 9px !important;
-    box-shadow: 3px 3px 0 #7a3d00 !important;
+    box-shadow: 2px 2px 0 #c94a00 !important;
 }
 
 /* Bot bubble */
 .message.bot, [data-testid="bot"] .message {
-    background: #261600 !important;
-    border: 3px solid #ffb347 !important;
-    border-radius: 0 !important;
-    color: #f5e6c8 !important;
+    background: #fff3e0 !important;
+    border: 2px solid #ff9500 !important;
+    border-radius: 4px !important;
+    color: #7a3000 !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 9px !important;
-    box-shadow: 3px 3px 0 #7a3d00 !important;
+    box-shadow: 2px 2px 0 #c94a00 !important;
 }
 
 /* ── Inputs ───────────────────────────────────────────────── */
 input, textarea, .gr-textbox textarea, .gr-textbox input {
-    background: #120d06 !important;
-    border: 3px solid #ff8c00 !important;
-    border-radius: 0 !important;
-    color: #f5e6c8 !important;
+    background: #fff8f0 !important;
+    border: 2px solid #e86500 !important;
+    border-radius: 4px !important;
+    color: #7a3000 !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 9px !important;
-    caret-color: #ff8c00 !important;
+    caret-color: #e86500 !important;
 }
 
 input:focus, textarea:focus {
-    box-shadow: 0 0 0 2px #ff8c00, 0 0 15px rgba(255,140,0,0.4) !important;
+    box-shadow: 0 0 0 2px #e86500 !important;
     outline: none !important;
 }
 
 input::placeholder, textarea::placeholder {
-    color: #7a4d1a !important;
+    color: #c9956a !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 8px !important;
 }
@@ -189,129 +190,104 @@ input::placeholder, textarea::placeholder {
 button, .gr-button {
     font-family: 'Press Start 2P', monospace !important;
     font-size: 9px !important;
-    border-radius: 0 !important;
-    border: 3px solid #ff8c00 !important;
-    background: #3d2200 !important;
-    color: #ff8c00 !important;
+    border-radius: 4px !important;
+    border: 2px solid #e86500 !important;
+    background: #fff3e0 !important;
+    color: #e86500 !important;
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
-    box-shadow: 4px 4px 0 #7a3d00 !important;
+    box-shadow: 3px 3px 0 #c94a00 !important;
     transition: none !important;
     cursor: pointer !important;
     padding: 10px 14px !important;
 }
 
 button:hover, .gr-button:hover {
-    background: #ff8c00 !important;
-    color: #1a1209 !important;
-    box-shadow: 2px 2px 0 #7a3d00 !important;
+    background: #e86500 !important;
+    color: #fdf6ec !important;
+    box-shadow: 1px 1px 0 #c94a00 !important;
     transform: translate(2px, 2px) !important;
 }
 
 button:active, .gr-button:active {
-    transform: translate(4px, 4px) !important;
+    transform: translate(3px, 3px) !important;
     box-shadow: none !important;
 }
 
 /* Primary buttons */
 button.primary, .gr-button-primary {
-    background: #4d2900 !important;
-    border-color: #ff8c00 !important;
-    color: #ff8c00 !important;
-    box-shadow: 4px 4px 0 #ff8c00 !important;
+    background: #e86500 !important;
+    border-color: #c94a00 !important;
+    color: #fdf6ec !important;
+    box-shadow: 3px 3px 0 #7a3000 !important;
+}
+button.primary:hover, .gr-button-primary:hover {
+    background: #c94a00 !important;
+    color: #fdf6ec !important;
 }
 
 /* Secondary buttons */
 button.secondary, .gr-button-secondary {
-    background: #2b0a00 !important;
-    border-color: #cc4e00 !important;
-    color: #cc4e00 !important;
-    box-shadow: 4px 4px 0 #7a1a00 !important;
+    background: #fff3e0 !important;
+    border-color: #c94a00 !important;
+    color: #c94a00 !important;
+    box-shadow: 3px 3px 0 #7a3000 !important;
 }
 button.secondary:hover, .gr-button-secondary:hover {
-    background: #cc4e00 !important;
-    color: #1a1209 !important;
+    background: #c94a00 !important;
+    color: #fdf6ec !important;
 }
 
 /* ── Labels ───────────────────────────────────────────────── */
 .gr-block-label, .label-wrap, label {
-    color: #ff8c00 !important;
+    color: #e86500 !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 8px !important;
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
-    border-bottom: 2px solid #ff8c00 !important;
+    border-bottom: 2px solid #e86500 !important;
     padding-bottom: 4px !important;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 8px; background: #1a1209; }
-::-webkit-scrollbar-thumb { background: #ff8c00; border: 2px solid #1a1209; }
-::-webkit-scrollbar-thumb:hover { background: #ffb347; }
+::-webkit-scrollbar { width: 8px; background: #fdf6ec; }
+::-webkit-scrollbar-thumb { background: #e86500; border: 2px solid #fdf6ec; }
+::-webkit-scrollbar-thumb:hover { background: #ff9500; }
 
 /* ── Image upload ─────────────────────────────────────────── */
 .gr-image, .image-container {
-    border: 4px dashed #ff8c00 !important;
-    border-radius: 0 !important;
-    background: #120d06 !important;
+    border: 3px dashed #e86500 !important;
+    border-radius: 4px !important;
+    background: #fff8f0 !important;
 }
 
 /* ── Examples ─────────────────────────────────────────────── */
 .gr-examples .gr-sample-textbox {
-    background: #261600 !important;
-    border: 2px solid #7a3d00 !important;
-    border-radius: 0 !important;
-    color: #f5e6c8 !important;
+    background: #fff3e0 !important;
+    border: 2px solid #e86500 !important;
+    border-radius: 4px !important;
+    color: #7a3000 !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 8px !important;
 }
 .gr-examples .gr-sample-textbox:hover {
-    border-color: #ff8c00 !important;
-    background: #3d2200 !important;
+    border-color: #c94a00 !important;
+    background: #ffe0b2 !important;
 }
 
 /* ── Dividers ─────────────────────────────────────────────── */
 hr {
     border: none !important;
-    border-top: 3px solid #ff8c00 !important;
-    box-shadow: 0 0 8px rgba(255,140,0,0.5) !important;
+    border-top: 2px solid #e86500 !important;
     margin: 12px 0 !important;
 }
 
 /* ── Footer ───────────────────────────────────────────────── */
 footer { display: none !important; }
 
-/* ── Scanlines ────────────────────────────────────────────── */
-.gradio-container::before {
-    content: '';
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.12) 2px,
-        rgba(0,0,0,0.12) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-}
-
-/* ── CRT warm glow ────────────────────────────────────────── */
-.gradio-container::after {
-    content: '';
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    box-shadow: inset 0 0 120px rgba(255,140,0,0.05);
-    pointer-events: none;
-    z-index: 9998;
-}
-
 /* ── Info text ────────────────────────────────────────────── */
 .gr-info, .gr-form .gr-info {
-    color: #7a4d1a !important;
+    color: #c9956a !important;
     font-family: 'Press Start 2P', monospace !important;
     font-size: 7px !important;
 }
