@@ -178,7 +178,14 @@ THEME = gr.themes.Soft(
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
 
-.gradio-container { max-width: 980px !important; margin: 0 auto !important; }
+.gradio-container {
+    max-width: 1320px !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding-left: clamp(16px, 4vw, 48px) !important;
+    padding-right: clamp(16px, 4vw, 48px) !important;
+    box-sizing: border-box !important;
+}
 
 /* ── Top bar ──────────────────────────────────────────────── */
 .topbar {
@@ -257,7 +264,10 @@ CSS = """
 }
 
 /* ── Chat screen ──────────────────────────────────────────── */
-.chat-screen { border: none !important; background: transparent !important; box-shadow: none !important; }
+.chat-screen {
+    border: none !important; background: transparent !important; box-shadow: none !important;
+    max-width: 860px !important; margin: 0 auto !important;
+}
 .chat-topbar {
     display: flex !important; align-items: center; justify-content: space-between;
     padding: 4px 2px 14px !important; border: none !important; background: transparent !important; box-shadow: none !important;
