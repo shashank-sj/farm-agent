@@ -22,8 +22,12 @@ class RecommendationItem(BaseModel):
 
 
 class FarmResponse(BaseModel):
-    topic: str = Field(
-        description="Short title summarising what the answer is about, e.g. 'Wheat Fertilizer Recommendation'"
+    topic: Optional[str] = Field(
+        default=None,
+        description=(
+            "Short title summarising what the answer is about, e.g. 'Wheat Fertilizer Recommendation'. "
+            "Leave null for greetings, small talk, or when the answer is itself a clarifying question."
+        ),
     )
     crop: Optional[str] = Field(default=None, description="Crop the answer relates to, if any")
     summary: str = Field(description="A concise 1-3 sentence direct answer to the farmer's question")
@@ -40,7 +44,14 @@ class FarmResponse(BaseModel):
 
 
 def render_farm_response(r: FarmResponse) -> str:
-    """Render a FarmResponse as a Markdown card for the Gradio chatbot."""
+    """Render a FarmResponse as a Markdown card for the Gradio chatbot.
+
+    Greetings/clarifying questions (no topic) render as plain text — the card
+    header and chrome are reserved for answers that actually deliver information.
+    """
+    if not r.topic:
+        return r.summary.strip()
+
     lines = [f"### 🌱 {r.topic}"]
     if r.crop:
         lines.append(f"**Crop:** {r.crop}")
