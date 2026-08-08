@@ -34,7 +34,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install ruff
-      - run: ruff check src/ app/ --ignore E501,E402
+      - run: ruff check src/ app.py --ignore E501,E402
 
   deploy:
     name: Deploy to HuggingFace Spaces
@@ -58,7 +58,7 @@ jobs:
               ignore_patterns=[
                   ".git*", "__pycache__", "*.pyc",
                   "mlflow/*.db", "outputs/", ".env",
-                  "tests/", "data/faiss_index/",
+                  "tests/", "data/faiss_index/", "unused/",
               ],
           )
           print("Deployed to HF Spaces: ${{ env.HF_SPACE }}")

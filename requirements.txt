@@ -5,15 +5,11 @@ langchain-groq
 langchain-core
 langgraph
 faiss-cpu
-sentence-transformers
-rank-bm25
 ultralytics
 gradio
 mlflow
 tavily-python
 python-dotenv
-peft
-transformers
 torch
 Pillow
 pytest

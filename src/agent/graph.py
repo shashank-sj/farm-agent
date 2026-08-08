@@ -10,10 +10,8 @@ Routes user queries to the right tool automatically:
 import os
 import logging
 from typing import Annotated, TypedDict, Optional, Literal
-from pathlib import Path
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -23,6 +21,7 @@ from src.tools.rag_tool import FarmRAGTool
 from src.tools.vision_tool import FarmVisionTool
 from src.tools.search_tool import FarmWebSearchTool
 from src.tools.yield_tool import YieldPredictionTool
+from src.agent.schemas import FarmResponse, render_farm_response
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("farm-agent")
@@ -62,6 +61,14 @@ Rules:
 - ALWAYS respond in English only. You may include Hindi agricultural terms in parentheses (e.g., Kharif, Rabi, Zaid) but all explanations must be in English.
 """
 
+STRUCTURE_PROMPT = """You reformat a farm assistant's answer into a structured card.
+Only reorganise facts that are already present in the answer — never invent new ones.
+- "recommendations" is for concrete options/products/methods being compared (e.g. fertilizers,
+  pesticides, irrigation methods). Leave it empty for definitions, yes/no, or single-fact answers.
+- "precautions" holds warnings, overuse risks, or legal cautions mentioned in the answer.
+- "sources" names where the info came from if stated (e.g. knowledge base, web search, KVK).
+Keep everything concise and grounded in the original answer."""
+
 
 # ── Farm Agent ─────────────────────────────────────────────────────────────────
 
@@ -77,8 +84,6 @@ class FarmAgent:
         gemini_api_key: str = "",          # kept for RAG tool embeddings
         rag_index_path: str = "data/faiss_index",
         vision_model_path: str = "outputs/farm-vision/weights/best.pt",
-        # llm_model_path: str = "outputs/gemma-farm-qlora/final",  # GPU required — disabled
-        # use_local_llm: bool = False,                              # GPU required — disabled
         max_steps: int = 10,
     ):
         self.max_steps = max_steps
@@ -92,12 +97,6 @@ class FarmAgent:
             api_key=groq_api_key,
             temperature=0.2,
         )
-
-        # ── Fine-tuned Gemma (disabled — requires GPU) ──────────────────────
-        # if use_local_llm and Path(llm_model_path).exists():
-        #     logger.info(f"Loading fine-tuned Gemma from {llm_model_path}")
-        #     self.llm = self._load_local_llm(llm_model_path)
-        # ───────────────────────────────────────────────────────────────────
 
         # Tools
         self.rag_tool = FarmRAGTool(
@@ -116,28 +115,9 @@ class FarmAgent:
         ]
 
         self.llm_with_tools = self.llm.bind_tools(self.tools)
+        self.structurer = self.llm.with_structured_output(FarmResponse)
         self.graph = self._build_graph()
         logger.info("Farm Agent ready ✓")
-
-    # def _load_local_llm(self, model_path: str):
-    #     """Load fine-tuned Gemma-2B as LangChain LLM. Requires GPU."""
-    #     import torch
-    #     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-    #     from peft import PeftModel
-    #     from langchain_community.llms import HuggingFacePipeline
-    #
-    #     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    #     base = AutoModelForCausalLM.from_pretrained(
-    #         "google/gemma-2b-it",
-    #         torch_dtype=torch.float16,
-    #         device_map="auto",
-    #     )
-    #     model = PeftModel.from_pretrained(base, model_path)
-    #     pipe = pipeline(
-    #         "text-generation", model=model, tokenizer=tokenizer,
-    #         max_new_tokens=512, temperature=0.2, do_sample=True,
-    #     )
-    #     return HuggingFacePipeline(pipeline=pipe)
 
     # ── Graph Nodes ────────────────────────────────────────────────────────────
 
@@ -155,7 +135,6 @@ class FarmAgent:
 
         # Add system prompt as first message if not present
         if not any(hasattr(m, "type") and m.type == "system" for m in messages):
-            from langchain_core.messages import SystemMessage
             messages = [SystemMessage(content=SYSTEM_PROMPT)] + messages
 
         response = self.llm_with_tools.invoke(messages)
@@ -205,6 +184,20 @@ class FarmAgent:
 
         return graph.compile()
 
+    def _structure_answer(self, question: str, raw_answer: str) -> str:
+        """Reshape the agent's raw answer into a consistent Markdown card."""
+        try:
+            structured: FarmResponse = self.structurer.invoke([
+                SystemMessage(content=STRUCTURE_PROMPT),
+                HumanMessage(
+                    content=f"Farmer's question: {question}\n\nAssistant's answer to reformat:\n{raw_answer}"
+                ),
+            ])
+            return render_farm_response(structured)
+        except Exception as e:
+            logger.warning(f"Structured formatting failed, returning raw answer: {e}")
+            return raw_answer
+
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def chat(self, message: str, image_path: str = None, history: list = None) -> str:
@@ -246,7 +239,8 @@ class FarmAgent:
 
         # Extract final answer
         last_message = final_state["messages"][-1]
-        answer = last_message.content if hasattr(last_message, "content") else str(last_message)
+        raw_answer = last_message.content if hasattr(last_message, "content") else str(last_message)
+        answer = self._structure_answer(message, raw_answer)
 
         logger.info(f"Steps taken: {final_state.get('num_steps', 0)}")
         return answer
