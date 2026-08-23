@@ -27,7 +27,7 @@ User Input (text + optional image)
             │
             ▼
     ┌───────────────────┐
-    │   LangGraph Agent  │  ← Groq (Llama 3.1)
+    │   LangGraph Agent  │  ← Groq (openai/gpt-oss-20b)
     └───────────────────┘
             │
     ┌───────┴────────────────────────────────┐
@@ -149,7 +149,7 @@ outputs/farm-vision/weights/best.pt
 ## Environment Variables
 
 ```bash
-GROQ_API_KEY=your_groq_key            # Required — agent LLM (Llama 3.1 via Groq)
+GROQ_API_KEY=your_groq_key            # Required — agent LLM (openai/gpt-oss-20b via Groq)
 GEMINI_API_KEY=your_gemini_key        # Required — RAG embeddings
 TAVILY_API_KEY=your_tavily_key        # Optional — web search (falls back to DuckDuckGo)
 HF_TOKEN=your_hf_token                # For HF Spaces deployment

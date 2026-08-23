@@ -115,9 +115,11 @@ class FarmAgent:
             os.environ["GOOGLE_API_KEY"] = gemini_api_key
 
         # LLM — Groq (CPU-friendly, free tier, fast)
-        logger.info("Using Groq llama-3.1-8b-instant as agent LLM")
+        # llama-3.1-8b-instant was decommissioned by Groq on 2026-08-16; migrated
+        # to their recommended replacement for that tier.
+        logger.info("Using Groq openai/gpt-oss-20b as agent LLM")
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             api_key=groq_api_key,
             temperature=0.2,
         )
