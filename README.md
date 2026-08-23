@@ -52,6 +52,11 @@ Every answer is passed through a `FarmResponse` Pydantic schema (`src/agent/sche
 being shown to the user, so responses are consistently structured — topic, summary, concrete
 recommendations (with how-to-use / where-to-buy / pros / cons), precautions, and sources.
 
+**Memory:** each turn replays the full conversation (from Gradio's in-memory `history_state`)
+back through the LLM, so the model does see prior turns — but it's session-only (lost on page
+refresh or Space restart), unbounded (no truncation/summarization for long chats), and not
+persisted anywhere. There's no cross-session recall.
+
 ## Tools
 
 | Tool | Powered By | Handles |
@@ -102,9 +107,25 @@ farm-agent/
 ## Setup Guide
 
 ### 1. Build the RAG Knowledge Base
-Add farm PDFs/TXTs to `data/knowledge_base/`, embed them with `GoogleGenerativeAIEmbeddings`,
-and save a FAISS index to `data/faiss_index/`. `FarmRAGTool` (`src/tools/rag_tool.py`) loads
-that index at query time; if it isn't found, the tool falls back to a "not available" message.
+`FarmRAGTool` (`src/tools/rag_tool.py`) only *loads* `data/faiss_index/` at query time — it
+never builds it, and there's no index checked into this repo. Build one locally:
+
+```bash
+pip install -r requirements-ingest.txt   # pdfplumber, pytesseract — not needed to serve the app
+python scripts/build_rag_index.py
+```
+
+Drop `.txt`/`.md`, `.pdf`, or `.png`/`.jpg` files into `data/knowledge_base/` first. The script
+chunks each with `RecursiveCharacterTextSplitter` (~800 chars, 120 overlap), embeds with
+`GoogleGenerativeAIEmbeddings`, and writes `data/faiss_index/`. PDFs get per-page text plus any
+tables (rendered as Markdown tables so row/column structure survives); a page with no
+extractable text (i.e. scanned) falls back to OCR via `pytesseract`, which also needs the
+Tesseract OCR engine installed separately (see `requirements-ingest.txt`) — pip alone won't
+install it. Note this is text retrieval, not image understanding: a photo with no text in it
+yields nothing indexable, by design. Missing an optional dependency skips that file with a
+warning instead of aborting the whole run.
+
+Without an index present, the tool falls back to a plain "knowledge base not available" message.
 
 ### 2. Add the Vision Model
 Copy a trained YOLOv8 classifier weights file to:
@@ -117,6 +138,13 @@ outputs/farm-vision/weights/best.pt
 2. Add `HF_TOKEN`, `GROQ_API_KEY`, `GEMINI_API_KEY` to GitHub Secrets
 3. Update `HF_SPACE` in `.github/workflows/ci_cd.yml`
 4. Push to `main` → auto-deploys
+
+> **Heads up:** `outputs/` and `data/faiss_index/` are both gitignored, and the CI/CD deploy
+> step's `ignore_patterns` additionally excludes `data/faiss_index/` on top of that — so even a
+> locally built index won't reach the Space through this pipeline as configured. To actually
+> serve RAG/vision from the Space, either commit the built index (and drop it from
+> `ignore_patterns`) or upload it directly to the Space outside of CI (e.g. `huggingface-cli
+> upload` or `huggingface_hub`'s `upload_folder`).
 
 ## Environment Variables
 

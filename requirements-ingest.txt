@@ -1,0 +1,12 @@
+# Extra deps for scripts/build_rag_index.py — NOT needed to serve the app,
+# only to (re)build data/faiss_index/ locally.
+#
+# OCR also requires the Tesseract OCR engine itself (pytesseract is just a
+# wrapper around the `tesseract` binary — pip alone won't install it):
+#   Windows: choco install tesseract   (or the UB-Mannheim installer)
+#   macOS:   brew install tesseract
+#   Linux:   apt-get install tesseract-ocr
+
+pdfplumber
+pytesseract
+langchain-text-splitters

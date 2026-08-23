@@ -7,7 +7,6 @@ toggled by show/hide (no server-side routing needed).
 """
 
 import os
-import tempfile
 import gradio as gr
 from dotenv import load_dotenv
 
@@ -39,30 +38,31 @@ except Exception as _e:
 
 # ── Chat Function ──────────────────────────────────────────────────────────────
 
-def chat(message: str, image, history: list):
+EMPTY_COMPOSER = {"text": "", "files": []}
+
+
+def chat(payload: dict, history: list):
     global agent
 
-    if agent is None:
-        try:
-            load_agent()
-        except Exception as e:
-            return history, history, f"Failed to load agent: {e}"
-
-    image_path = None
-    if image is not None:
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-            if hasattr(image, "save"):
-                image.save(tmp.name)
-            else:
-                import shutil
-                shutil.copy(image, tmp.name)
-            image_path = tmp.name
+    message = (payload.get("text") or "").strip()
+    files = payload.get("files") or []
+    image_path = files[0] if files else None
 
     if not message and image_path:
         message = "Please analyse this image and tell me what's wrong with this plant."
 
     if not message:
-        return history, history, ""
+        return history, history, EMPTY_COMPOSER
+
+    if agent is None:
+        try:
+            load_agent()
+        except Exception as e:
+            history = history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": f"Assistant isn't available right now ({e})."},
+            ]
+            return history, history, EMPTY_COMPOSER
 
     try:
         response = agent.chat(
@@ -81,11 +81,11 @@ def chat(message: str, image, history: list):
         {"role": "user", "content": message},
         {"role": "assistant", "content": response},
     ]
-    return history, history, "", None
+    return history, history, EMPTY_COMPOSER
 
 
 def clear_chat():
-    return [], [], "", None
+    return [], [], EMPTY_COMPOSER
 
 
 def enter_chat():
@@ -263,20 +263,30 @@ CSS = """
     background: #f0f3ec; border-radius: 999px; padding: 3px 11px; margin: 3px;
 }
 
-/* ── Chat screen ──────────────────────────────────────────── */
+/* ── Chat screen (Claude-style: open canvas, no boxed card) ─ */
 .chat-screen {
     border: none !important; background: transparent !important; box-shadow: none !important;
-    max-width: 860px !important; margin: 0 auto !important;
+    max-width: 760px !important; margin: 0 auto !important;
 }
 .chat-topbar {
     display: flex !important; align-items: center; justify-content: space-between;
-    padding: 4px 2px 14px !important; border: none !important; background: transparent !important; box-shadow: none !important;
+    padding: 4px 2px 10px !important; border: none !important; background: transparent !important; box-shadow: none !important;
 }
-.chat-title p { font-weight: 700; font-size: 16px; margin: 0 !important; }
 .ghost-btn {
     background: transparent !important; border: 1px solid #e1e7d9 !important;
     box-shadow: none !important; font-size: 13px !important; padding: 6px 14px !important;
 }
+
+.claude-chat {
+    border: none !important; background: transparent !important; box-shadow: none !important;
+}
+.claude-chat .message-wrap { padding: 0 2px !important; }
+
+.composer {
+    border-radius: 26px !important;
+    box-shadow: 0 1px 2px rgba(20,30,20,.05), 0 6px 18px rgba(20,30,20,.06) !important;
+}
+.composer textarea { background: transparent !important; }
 
 footer { display: none !important; }
 .fa-footer { text-align: center; padding-top: 6px !important; border: none !important; background: transparent !important; box-shadow: none !important; }
@@ -292,6 +302,7 @@ footer { display: none !important; }
 .dark .feature-desc, .dark .crop-chip { color: #9aa38f; }
 .dark .crop-chip { background: #1c2217; }
 .dark .fa-footer p { color: #6b7462 !important; }
+.dark .ghost-btn { border-color: #2a3322 !important; }
 """
 
 
@@ -320,27 +331,26 @@ with gr.Blocks(title="Farm Assistant") as demo:
     with gr.Column(elem_classes="chat-screen", visible=False) as chat_screen:
         with gr.Row(elem_classes="chat-topbar"):
             back_btn = gr.Button("← Home", elem_classes="ghost-btn", scale=0)
-            gr.Markdown("Chat with Farm Assistant", elem_classes="chat-title")
-            clear_btn = gr.Button("Clear", elem_classes="ghost-btn", scale=0)
+            clear_btn = gr.Button("New chat", elem_classes="ghost-btn", scale=0)
 
         chatbot = gr.Chatbot(
-            label="Chat",
-            height=480,
             show_label=False,
-            avatar_images=("🧑‍🌾", "🌾"),
+            height=560,
+            layout="panel",
+            buttons=["copy"],
+            placeholder="### 🌾 Farm Assistant\nAsk about crops, soil, pests, schemes or market prices.",
+            elem_classes="claude-chat",
         )
 
-        with gr.Row():
-            msg_input = gr.Textbox(
-                placeholder="Ask about crops, soil, pests, laws, market prices...",
-                show_label=False,
-                scale=5,
-                container=False,
-            )
-            send_btn = gr.Button("Send", variant="primary", scale=1)
-
-        with gr.Accordion("📷 Attach a plant/pest photo (optional)", open=False):
-            image_input = gr.Image(type="pil", show_label=False, height=180)
+        msg_input = gr.MultimodalTextbox(
+            placeholder="Message Farm Assistant...",
+            show_label=False,
+            sources=["upload"],
+            file_types=["image"],
+            file_count="single",
+            submit_btn="↑",
+            elem_classes="composer",
+        )
 
     # ── State & wiring ───────────────────────────────────────────────────────
     history_state = gr.State([])
@@ -348,19 +358,14 @@ with gr.Blocks(title="Farm Assistant") as demo:
     start_btn.click(fn=enter_chat, outputs=[welcome_screen, chat_screen])
     back_btn.click(fn=go_home, outputs=[welcome_screen, chat_screen])
 
-    send_btn.click(
-        fn=chat,
-        inputs=[msg_input, image_input, history_state],
-        outputs=[chatbot, history_state, msg_input, image_input],
-    )
     msg_input.submit(
         fn=chat,
-        inputs=[msg_input, image_input, history_state],
-        outputs=[chatbot, history_state, msg_input, image_input],
+        inputs=[msg_input, history_state],
+        outputs=[chatbot, history_state, msg_input],
     )
     clear_btn.click(
         fn=clear_chat,
-        outputs=[chatbot, history_state, msg_input, image_input],
+        outputs=[chatbot, history_state, msg_input],
     )
 
     gr.Markdown(FOOTER_TEXT, elem_classes="fa-footer")
