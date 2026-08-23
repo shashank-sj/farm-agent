@@ -187,12 +187,13 @@ CSS = """
     box-sizing: border-box !important;
 }
 
-/* ── Top bar ──────────────────────────────────────────────── */
+/* ── Top bar (brand + status grouped at the right) ─────────── */
 .topbar {
     display: flex !important;
     align-items: center;
-    justify-content: space-between;
-    padding: 6px 2px 18px !important;
+    justify-content: flex-end;
+    gap: 14px !important;
+    padding: 6px 2px 10px !important;
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -263,14 +264,15 @@ CSS = """
     background: #f0f3ec; border-radius: 999px; padding: 3px 11px; margin: 3px;
 }
 
-/* ── Chat screen (Claude-style: open canvas, no boxed card) ─ */
+/* ── Chat screen (Claude-style app shell: header, scrolling
+   messages, composer pinned to the bottom of the viewport) ── */
 .chat-screen {
     border: none !important; background: transparent !important; box-shadow: none !important;
     max-width: 760px !important; margin: 0 auto !important;
 }
 .chat-topbar {
     display: flex !important; align-items: center; justify-content: space-between;
-    padding: 4px 2px 10px !important; border: none !important; background: transparent !important; box-shadow: none !important;
+    padding: 0 2px 6px !important; border: none !important; background: transparent !important; box-shadow: none !important;
 }
 .ghost-btn {
     background: transparent !important; border: 1px solid #e1e7d9 !important;
@@ -282,9 +284,17 @@ CSS = """
 }
 .claude-chat .message-wrap { padding: 0 2px !important; }
 
+/* Pinned, always-visible composer — centered on the same column as the
+   chat, floating above the page rather than scrolling away with it. */
 .composer {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 18px !important;
+    transform: translateX(-50%) !important;
+    width: min(760px, calc(100% - 32px)) !important;
+    z-index: 20 !important;
     border-radius: 26px !important;
-    box-shadow: 0 1px 2px rgba(20,30,20,.05), 0 6px 18px rgba(20,30,20,.06) !important;
+    box-shadow: 0 2px 6px rgba(20,30,20,.08), 0 10px 30px rgba(20,30,20,.1) !important;
 }
 .composer textarea { background: transparent !important; }
 
@@ -326,6 +336,7 @@ with gr.Blocks(title="Farm Assistant") as demo:
             start_btn = gr.Button("Start chatting →", variant="primary", elem_classes="cta-btn", scale=0)
 
         gr.Markdown(CROPS_HTML, elem_classes="crops-line", sanitize_html=False)
+        gr.Markdown(FOOTER_TEXT, elem_classes="fa-footer")
 
     # ── Screen 2: Chat ────────────────────────────────────────────────────────
     with gr.Column(elem_classes="chat-screen", visible=False) as chat_screen:
@@ -335,7 +346,8 @@ with gr.Blocks(title="Farm Assistant") as demo:
 
         chatbot = gr.Chatbot(
             show_label=False,
-            height=560,
+            height="calc(100vh - 210px)",
+            autoscroll=True,
             layout="panel",
             buttons=["copy"],
             placeholder="### 🌾 Farm Assistant\nAsk about crops, soil, pests, schemes or market prices.",
@@ -367,8 +379,6 @@ with gr.Blocks(title="Farm Assistant") as demo:
         fn=clear_chat,
         outputs=[chatbot, history_state, msg_input],
     )
-
-    gr.Markdown(FOOTER_TEXT, elem_classes="fa-footer")
 
 
 if __name__ == "__main__":
