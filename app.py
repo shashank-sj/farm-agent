@@ -187,11 +187,13 @@ CSS = """
     box-sizing: border-box !important;
 }
 
-/* ── Top bar (brand + status grouped at the right) ─────────── */
+/* ── Top bar (brand + status grouped at the left) ──────────── */
 .topbar {
     display: flex !important;
+    flex-wrap: nowrap !important;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    width: 100% !important;
     gap: 14px !important;
     padding: 6px 2px 10px !important;
     border: none !important;
@@ -264,8 +266,10 @@ CSS = """
     background: #f0f3ec; border-radius: 999px; padding: 3px 11px; margin: 3px;
 }
 
-/* ── Chat screen (Claude-style app shell: header, scrolling
-   messages, composer pinned to the bottom of the viewport) ── */
+/* ── Chat screen (Claude-style: open canvas, composer sticks to
+   the bottom of the page as you scroll). Deliberately no vh/fixed
+   positioning here — HF Spaces embeds the app in an auto-resizing
+   iframe, and 100vh + position:fixed fights that resize loop. ── */
 .chat-screen {
     border: none !important; background: transparent !important; box-shadow: none !important;
     max-width: 760px !important; margin: 0 auto !important;
@@ -284,15 +288,12 @@ CSS = """
 }
 .claude-chat .message-wrap { padding: 0 2px !important; }
 
-/* Pinned, always-visible composer — centered on the same column as the
-   chat, floating above the page rather than scrolling away with it. */
+/* Sticks to the bottom of the chat-screen column as the page scrolls,
+   without depending on viewport units or leaving normal document flow. */
 .composer {
-    position: fixed !important;
-    left: 50% !important;
-    bottom: 18px !important;
-    transform: translateX(-50%) !important;
-    width: min(760px, calc(100% - 32px)) !important;
-    z-index: 20 !important;
+    position: sticky !important;
+    bottom: 12px !important;
+    z-index: 5 !important;
     border-radius: 26px !important;
     box-shadow: 0 2px 6px rgba(20,30,20,.08), 0 10px 30px rgba(20,30,20,.1) !important;
 }
@@ -346,7 +347,7 @@ with gr.Blocks(title="Farm Assistant") as demo:
 
         chatbot = gr.Chatbot(
             show_label=False,
-            height="calc(100vh - 210px)",
+            height=600,
             autoscroll=True,
             layout="panel",
             buttons=["copy"],
