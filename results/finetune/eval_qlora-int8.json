@@ -1,0 +1,19 @@
+{
+  "label": "qlora-int8",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "adapter": "outputs/finetune/qlora/final",
+  "full_model": null,
+  "load": "8bit",
+  "rag_index": null,
+  "answer_nll": 1.9207,
+  "answer_perplexity": 6.825,
+  "n_rows": 109,
+  "n_answer_tokens": 5269,
+  "rouge_l": 0.2262,
+  "token_f1": 0.2963,
+  "avg_answer_words": 31.8,
+  "empty_answer_rate": 0.0,
+  "n_generated": 109,
+  "sec_per_answer": 1.912,
+  "gpu_mem_after_load_gb": 0.702
+}

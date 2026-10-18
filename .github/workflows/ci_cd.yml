@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  HF_SPACE: shank-j/farm-agent
+  HF_SPACE: shank-j/farm_agent
 
 jobs:
   test:
@@ -15,14 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true                # best.pt is stored in Git LFS
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt pytest pytest-cov
-      - run: pytest tests/ -v --cov=src --cov-report=xml
-      - uses: codecov/codecov-action@v4
-        continue-on-error: true
+      # CPU-only torch wheel: ~200 MB instead of ~2.5 GB of CUDA libraries
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -v
 
   lint:
     name: Lint
@@ -32,34 +34,44 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
       - run: pip install ruff
-      - run: ruff check src/ app.py --ignore E501,E402
+      - run: ruff check src/ scripts/ finetune/ tests/ app.py --ignore E501,E402
 
   deploy:
-    name: Deploy to HuggingFace Spaces
+    name: Build RAG index & deploy to HuggingFace Spaces
     runs-on: ubuntu-latest
     needs: [test, lint]
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - run: pip install huggingface_hub
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements.txt -r requirements-ingest.txt huggingface_hub
+      # The index is a build artifact: rebuilt from source documents + the Q&A
+      # dataset on every deploy instead of being committed to git.
+      - run: python -m scripts.build_rag_index --qa-dataset
       - name: Push to HF Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<'EOF'
+          import os
           from huggingface_hub import HfApi
-          api = HfApi(token="${{ secrets.HF_TOKEN }}")
+          api = HfApi(token=os.environ["HF_TOKEN"])
           api.upload_folder(
               folder_path=".",
-              repo_id="${{ env.HF_SPACE }}",
+              repo_id=os.environ["HF_SPACE"],
               repo_type="space",
               ignore_patterns=[
-                  ".git*", "__pycache__", "*.pyc",
-                  "mlflow/*.db", "outputs/", ".env",
-                  "tests/", "data/faiss_index/", "unused/",
+                  ".git*", "**/__pycache__/**", "*.pyc", ".env", "mlruns/**",
+                  "tests/**", "notebooks/**", "finetune/**", "unused/**", "results/**",
+                  "data/finetune/**", "outputs/finetune/**", "*.png", "New folder/**",
               ],
           )
-          print("Deployed to HF Spaces: ${{ env.HF_SPACE }}")
+          print("Deployed to HF Spaces:", os.environ["HF_SPACE"])
           EOF

@@ -1,5 +1,5 @@
-# Extra deps for scripts/build_rag_index.py — NOT needed to serve the app,
-# only to (re)build data/faiss_index/ locally.
+# Extra deps for scripts/build_rag_index.py and scripts/eval_retrieval.py —
+# NOT needed to serve the app, only to (re)build data/rag_index/.
 #
 # OCR also requires the Tesseract OCR engine itself (pytesseract is just a
 # wrapper around the `tesseract` binary — pip alone won't install it):
@@ -10,3 +10,4 @@
 pdfplumber
 pytesseract
 langchain-text-splitters
+datasets

@@ -1,15 +1,24 @@
 """
-Build the FAISS index used by farm_rag from the documents in data/knowledge_base/.
+Build the knowledge index used by farm_rag (src/tools/rag_tool.py).
 
-This is an offline/local step, not something the app runs at serve time — the
-RAG tool (src/tools/rag_tool.py) only ever *loads* data/faiss_index/, it never
-builds it. That's why the dependencies here live in requirements-ingest.txt
-instead of the main requirements.txt: the HF Space serving this app never
-needs pdfplumber or an OCR engine, only whoever rebuilds the index does.
+This is an offline step (run in CI before deploy, or on Kaggle) — the app only
+ever *loads* data/rag_index/. Ingestion-only dependencies (pdfplumber, OCR,
+datasets) live in requirements-ingest.txt so the serving image stays small.
 
 Usage:
-    pip install -r requirements-ingest.txt
-    python scripts/build_rag_index.py
+    pip install -r requirements.txt -r requirements-ingest.txt
+    python -m scripts.build_rag_index                         # documents only
+    python -m scripts.build_rag_index --qa-dataset             # + cleaned agri Q&A pairs
+    python -m scripts.build_rag_index --kb-dir none --qa-jsonl data/finetune/train.jsonl \
+        --out data/rag_index_train_only                        # train-split-only index (fine-tune eval)
+
+Output (data/rag_index/): index.faiss + chunks.jsonl + manifest.json — see src/retrieval/index.py.
+
+Two kinds of content:
+  * Documents (guides, PDFs) are split into ~800-character chunks.
+  * Q&A pairs are indexed one pair per chunk ("Q: … / A: …") and never split:
+    a pair is already a self-contained unit, and cutting it would separate an
+    answer from the question that gives it meaning.
 
 Supported input, dropped into data/knowledge_base/:
   .txt / .md   — read as plain text
@@ -25,20 +34,17 @@ Missing an optional dependency (pdfplumber, or Tesseract for OCR) doesn't
 abort the run — that file is skipped with a warning so the rest still builds.
 """
 
-import os
+import argparse
+import json
 import sys
 import logging
 from pathlib import Path
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("build-rag-index")
 
 KNOWLEDGE_BASE_DIR = Path("data/knowledge_base")
-INDEX_DIR = Path("data/faiss_index")
+INDEX_DIR = Path("data/rag_index")
 
 CHUNK_SIZE = 800       # characters — short farm-advice paragraphs, not academic PDFs
 CHUNK_OVERLAP = 120
@@ -138,11 +144,13 @@ def load_image_file(path: Path) -> list[dict]:
 
 def load_documents(directory: Path) -> list[dict]:
     if not directory.exists():
-        sys.exit(f"{directory}/ doesn't exist — create it and add some documents first.")
+        logger.warning(f"{directory}/ doesn't exist — no documents indexed from it.")
+        return []
 
     files = sorted(p for p in directory.rglob("*") if p.is_file())
     if not files:
-        sys.exit(f"No files found in {directory}/ — add some documents first.")
+        logger.warning(f"No files found in {directory}/.")
+        return []
 
     docs = []
     for path in files:
@@ -158,44 +166,82 @@ def load_documents(directory: Path) -> list[dict]:
     return docs
 
 
+# ── Q&A pairs ─────────────────────────────────────────────────────────────
+
+def load_qa_dataset() -> list[dict]:
+    """All cleaned pairs from the public agri Q&A dataset (see src/agri_qa.py)."""
+    from src.agri_qa import DATASET_ID, clean_pairs, load_raw
+
+    pairs, stats = clean_pairs(load_raw())
+    logger.info(f"Q&A dataset {DATASET_ID}: {json.dumps(stats)}")
+    return [{"question": p.question, "answer": p.answer, "source": DATASET_ID} for p in pairs]
+
+
+def load_qa_jsonl(path: Path) -> list[dict]:
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f if line.strip()]
+    return [{"question": r["question"], "answer": r["answer"], "source": path.name} for r in rows]
+
+
 # ── Build ─────────────────────────────────────────────────────────────────
 
-def main():
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
-    if not gemini_key:
-        sys.exit("GEMINI_API_KEY not set — needed to embed the chunks (add it to .env).")
-    os.environ["GOOGLE_API_KEY"] = gemini_key
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--kb-dir", default=str(KNOWLEDGE_BASE_DIR), help="documents folder, or 'none'")
+    p.add_argument("--qa-dataset", action="store_true", help="add the cleaned agri Q&A dataset from the HF Hub")
+    p.add_argument("--qa-jsonl", action="append", default=[], help="add Q&A pairs from a JSONL file (repeatable)")
+    p.add_argument("--out", default=str(INDEX_DIR))
+    p.add_argument("--embed-model", default=None, help="sentence-transformers model (default: BGE-small)")
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
 
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-    from langchain_core.documents import Document
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
-    from langchain_community.vectorstores import FAISS
 
-    logger.info(f"Loading documents from {KNOWLEDGE_BASE_DIR}/ ...")
-    raw_docs = load_documents(KNOWLEDGE_BASE_DIR)
-    if not raw_docs:
-        sys.exit("Nothing indexable was extracted — check the warnings above.")
-    logger.info(f"Loaded {len(raw_docs)} source unit(s) (pages/files).")
+    from src.retrieval.embedder import DEFAULT_EMBED_MODEL, SentenceTransformerEmbedder
+    from src.retrieval.index import Chunk, KnowledgeIndex
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", ". ", " ", ""],
+    texts: list[tuple[str, str, dict]] = []   # (text, source, metadata)
+
+    if args.kb_dir.lower() != "none":
+        kb_dir = Path(args.kb_dir)
+        logger.info(f"Loading documents from {kb_dir}/ ...")
+        raw_docs = load_documents(kb_dir)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
+            separators=["\n\n", "\n", ". ", " ", ""],
+        )
+        for doc in raw_docs:
+            meta = dict(doc["metadata"])
+            source = meta.pop("source")
+            for piece in splitter.split_text(doc["text"]):
+                texts.append((piece, source, {**meta, "kind": "document"}))
+        logger.info(f"Documents: {len(raw_docs)} source unit(s) → {len(texts)} chunk(s).")
+
+    qa_rows = load_qa_dataset() if args.qa_dataset else []
+    for path in args.qa_jsonl:
+        qa_rows += load_qa_jsonl(Path(path))
+    for row in qa_rows:
+        texts.append((f"Q: {row['question']}\nA: {row['answer']}", row["source"], {"kind": "qa"}))
+    if qa_rows:
+        logger.info(f"Q&A pairs: {len(qa_rows)} chunk(s).")
+
+    if not texts:
+        sys.exit("Nothing indexable was found — check the warnings above.")
+
+    chunks = [Chunk(id=i, text=t, source=s, metadata=m) for i, (t, s, m) in enumerate(texts)]
+    embedder = SentenceTransformerEmbedder(args.embed_model or DEFAULT_EMBED_MODEL)
+    logger.info(f"Embedding {len(chunks)} chunks with {embedder.model_name} ...")
+    index = KnowledgeIndex.build(
+        chunks, embedder,
+        extra_manifest={"chunk_size": CHUNK_SIZE, "chunk_overlap": CHUNK_OVERLAP,
+                        "n_qa_pairs": len(qa_rows), "n_document_chunks": len(chunks) - len(qa_rows)},
     )
-    chunks = [
-        Document(page_content=piece, metadata=doc["metadata"])
-        for doc in raw_docs
-        for piece in splitter.split_text(doc["text"])
-    ]
-    logger.info(f"Split into {len(chunks)} chunk(s) (~{CHUNK_SIZE} chars, {CHUNK_OVERLAP} overlap).")
-
-    logger.info("Embedding chunks and building the FAISS index (calls the Gemini embeddings API)...")
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-
-    INDEX_DIR.mkdir(parents=True, exist_ok=True)
-    vectorstore.save_local(str(INDEX_DIR))
-    logger.info(f"Saved index to {INDEX_DIR}/ — {len(chunks)} chunks from {len(raw_docs)} source unit(s).")
+    index.save(args.out)
+    logger.info(f"Saved index to {args.out}/ — {len(chunks)} chunks.")
 
 
 if __name__ == "__main__":

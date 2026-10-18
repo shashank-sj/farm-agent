@@ -1,16 +1,28 @@
-langchain
-langchain-community
-langchain-google-genai
-langchain-groq
-langchain-core
-langgraph
-faiss-cpu
-ultralytics
+# Serving dependencies (HF Space) — also what CI tests against.
+langchain-core>=0.3
+langgraph>=0.2
+langchain-groq>=0.2
 gradio
-mlflow
-tavily-python
 python-dotenv
+
+# Retrieval (local embeddings + re-ranker, no API key)
+faiss-cpu
+sentence-transformers>=3.0
+numpy
+
+# Vision
+ultralytics
 torch
 Pillow
-pytest
-ruff
+
+# Yield model — scikit-learn is pinned because a pickled model must be loaded
+# by the same version that trained it (scripts/train_yield_model.py).
+scikit-learn==1.6.1
+pandas
+joblib
+
+# Web search (Tavily if TAVILY_API_KEY is set, DuckDuckGo otherwise)
+tavily-python
+ddgs
+
+# Optional: `pip install mlflow` and set MLFLOW_TRACKING_URI to log serving metrics.

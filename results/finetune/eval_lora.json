@@ -1,0 +1,23 @@
+{
+  "label": "lora",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "adapter": "outputs/finetune/lora/final",
+  "full_model": null,
+  "load": "fp16",
+  "rag_index": null,
+  "answer_nll": 1.863,
+  "answer_perplexity": 6.443,
+  "n_rows": 109,
+  "n_answer_tokens": 5269,
+  "rouge_l": 0.2333,
+  "token_f1": 0.3027,
+  "avg_answer_words": 31.1,
+  "empty_answer_rate": 0.0,
+  "n_generated": 109,
+  "sec_per_answer": 0.625,
+  "gpu_mem_after_load_gb": 1.066,
+  "judge_correctness": 3.8,
+  "judge_helpfulness": 4.0,
+  "judge_n": 5,
+  "judge_model": "openai/gpt-oss-120b"
+}

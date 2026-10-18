@@ -1,0 +1,23 @@
+{
+  "label": "full",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "adapter": null,
+  "full_model": "outputs/finetune/full/final",
+  "load": "fp16",
+  "rag_index": null,
+  "answer_nll": 1.8415,
+  "answer_perplexity": 6.306,
+  "n_rows": 109,
+  "n_answer_tokens": 5269,
+  "rouge_l": 0.2551,
+  "token_f1": 0.3028,
+  "avg_answer_words": 26.1,
+  "empty_answer_rate": 0.0,
+  "n_generated": 109,
+  "sec_per_answer": 0.284,
+  "gpu_mem_after_load_gb": 1.008,
+  "judge_correctness": 2.833,
+  "judge_helpfulness": 2.833,
+  "judge_n": 6,
+  "judge_model": "openai/gpt-oss-120b"
+}

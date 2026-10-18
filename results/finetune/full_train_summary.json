@@ -1,0 +1,28 @@
+{
+  "method": "full",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "trainable_params": 494032768,
+  "total_params": 494032768,
+  "trainable_pct": 100.0,
+  "lr": 2e-05,
+  "effective_batch": 16,
+  "epochs_planned": 3.0,
+  "global_steps": 350,
+  "best_checkpoint": "outputs/finetune/full/checkpoints/checkpoint-200",
+  "best_eval_loss": 1.7097,
+  "best_eval_answer_perplexity": 5.527,
+  "train_minutes": 18.5,
+  "peak_gpu_mem_gb": 8.19,
+  "gpu": "Tesla T4",
+  "train_data": {
+    "kept": 1859,
+    "skipped_prompt_too_long": 0,
+    "answer_truncated": 0
+  },
+  "val_data": {
+    "kept": 114,
+    "skipped_prompt_too_long": 0,
+    "answer_truncated": 0
+  },
+  "lora": null
+}

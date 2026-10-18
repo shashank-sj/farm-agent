@@ -11,11 +11,13 @@ license: mit
 short_description: one tool for all your farm queries
 ---
 
-# 🌾 Farm Agent — Intelligent Multi-Modal Farm Assistant
+# 🌾 Farm Agent — Multi-Modal Farm Assistant
 
-A production-grade **LangGraph agent** combining RAG, vision, web search, and yield prediction to help Indian farmers with any farming query.
+A LangGraph agent for Indian farmers that combines hybrid RAG, a plant disease / pest image
+classifier, live web search, and a trained yield model, with a fine-tuned small LLM as a
+fallback and a deterministic safety layer in front of everything.
 
-[![Demo](https://img.shields.io/badge/🤗-Live_Demo-yellow)](https://huggingface.co/spaces/shank-j/farm-agent)
+[![Demo](https://img.shields.io/badge/🤗-Live_Demo-yellow)](https://huggingface.co/spaces/shank-j/farm_agent)
 [![CI/CD](https://github.com/shashank-sj/farm-agent/actions/workflows/ci_cd.yml/badge.svg)](https://github.com/shashank-sj/farm-agent/actions/workflows/ci_cd.yml)
 
 ---
@@ -23,153 +25,116 @@ A production-grade **LangGraph agent** combining RAG, vision, web search, and yi
 ## Architecture
 
 ```
-User Input (text + optional image)
-            │
-            ▼
-    ┌───────────────────┐
-    │   LangGraph Agent  │  ← Groq (openai/gpt-oss-20b)
-    └───────────────────┘
-            │
-    ┌───────┴────────────────────────────────┐
-    │         Tool Router (automatic)         │
-    └───┬──────────┬──────────┬──────────────┘
-        │          │          │          │
-        ▼          ▼          ▼          ▼
-   📚 RAG      👁️ Vision  🔍 Search  📊 Yield
-   (FAISS +   (YOLOv8    (Tavily/   (Rule-based)
-   Gemini)    classifier) DuckDuckGo)
-        │          │          │          │
-        └──────────┴──────────┴──────────┘
-                        │
-                        ▼
-        Structured into a FarmResponse (Pydantic)
-                        │
-                        ▼
-               Final Answer to User
+user message (+ optional photo)
+        │
+        ▼
+ ┌─────────────────────┐   crisis / poisoning ──► fixed helpline / first-aid answer (no LLM)
+ │ guardrails.screen() │   banned pesticide   ──► warning appended to the final answer
+ └─────────────────────┘
+        │
+        ▼                       LangGraph
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │  START ─ photo? ─ yes ─► vision node (YOLOv8s-cls, runs deterministically)│
+ │            │                      │                                       │
+ │            no                     ▼                                       │
+ │            └──────────────► agent (Groq gpt-oss-20b) ◄──────┐            │
+ │                                   │ tool calls?             │            │
+ │                                   ▼                         │            │
+ │                     tools: farm_rag │ farm_web_search │ yield_prediction  │
+ └────────────────────────────────────────────────────────────────────────┘
+        │                                    if the Groq call fails:
+        ▼                                    fine-tuned Qwen2.5-0.5B + RAG context answers instead
+ FarmResponse card (Pydantic structured output) ─► telemetry record ─► user
 ```
 
-Every answer is passed through a `FarmResponse` Pydantic schema (`src/agent/schemas.py`) before
-being shown to the user, so responses are consistently structured — topic, summary, concrete
-recommendations (with how-to-use / where-to-buy / pros / cons), precautions, and sources.
+| Component | What it is | Where |
+|---|---|---|
+| `farm_rag` | Hybrid retrieval: BM25 (from scratch) + FAISS (BGE-small embeddings) → Reciprocal Rank Fusion → cross-encoder re-ranking (MiniLM) | `src/retrieval/`, `src/tools/rag_tool.py` |
+| vision | YOLOv8s-cls, 27 classes (15 PlantVillage leaf classes + 12 insect classes), confidence-gated, beneficial insects flagged | `src/tools/vision_tool.py` |
+| `farm_web_search` | Tavily restricted to agri/government domains, DuckDuckGo fallback, results framed as untrusted | `src/tools/search_tool.py` |
+| `yield_prediction` | Gradient-boosted trees on Indian state crop data (1997–2020), time-based split; rule-based fallback | `scripts/train_yield_model.py`, `src/tools/yield_tool.py` |
+| fallback LLM | Qwen2.5-0.5B-Instruct fine-tuned with QLoRA on 1,859 cleaned agri Q&A pairs (from 22.6K raw rows, 72% of them duplicates) | `finetune/`, `src/llm/local_llm.py` |
+| guardrails | Pattern-based crisis / poisoning / banned-pesticide screen that runs before the LLM | `src/agent/guardrails.py` |
+| telemetry | One structured JSON record per interaction; optional MLflow metrics | `src/observability/telemetry.py` |
 
-**Memory:** each turn replays the full conversation (from Gradio's in-memory `history_state`)
-back through the LLM, so the model does see prior turns — but it's session-only (lost on page
-refresh or Space restart), unbounded (no truncation/summarization for long chats), and not
-persisted anywhere. There's no cross-session recall.
+### Design decisions
 
-## Tools
+- **Vision is not an LLM tool.** When a photo is attached the graph always runs the classifier first.
+  Routing an image needs no judgement, and an LLM-controlled file-path argument would let a prompt point
+  the tool at any file on the server.
+- **The model is never the safety mechanism.** Crisis and poisoning messages get fixed, reviewed text
+  before any LLM call; a jailbreak can't talk a regex out of its rules.
+- **The index is a build artifact.** CI rebuilds `data/rag_index/` on every deploy, and it's stored as
+  raw FAISS + JSONL rather than LangChain's pickled docstore, which needs `allow_dangerous_deserialization`.
+- **Bounded agent loop.** At most 6 LLM calls per question; the last call has no tools bound, so the user
+  always gets an answer instead of an empty message.
+- **Bounded memory.** Only the last 6 conversation turns are replayed to the LLM.
 
-| Tool | Powered By | Handles |
-|------|-----------|---------| 
-| 📚 `farm_rag` | FAISS + BM25 + Gemini | Crop cultivation, soil, pests, schemes |
-| 👁️ `farm_vision` | YOLOv8s-cls (31 classes) | Plant disease + pest photo analysis |
-| 🔍 `farm_web_search` | Tavily / DuckDuckGo | Live prices, laws, mandi rates, eNAM |
-| 📊 `yield_prediction` | Rule-based / XGBoost | Expected yield from farm parameters |
+## Results
+
+Each number comes from a script in this repo, run in the Kaggle notebooks in `notebooks/`.
+
+| What | Result | Source |
+|---|---|---|
+| Vision, held-out test (shipped `best.pt`, reproducible split, 1,393 images, 27 classes) | top-1 96.5%, macro-F1 0.959, ECE 0.020; weakest classes beetle (F1 0.76) and caterpillar (0.78) | `results/vision/test_metrics.json` |
+| Retrieval, 1,922 queries / 2,039 answers, 95% bootstrap CIs | cross-encoder re-ranking: MRR@10 0.543 → 0.570 and Recall@1 0.435 → 0.474 over dense (significant); RRF hybrid *without* re-ranking is worse than dense (MRR 0.498), so the no-re-ranker fallback is dense | `results/retrieval/retrieval_eval.md` |
+| Yield model vs lookup baseline (test years ≥ 2016) | MAE 0.96 vs 1.10 t/ha; median error 16.0% vs 20.7%; R² (log) 0.935 vs 0.893. A random split would report 0.70, which is optimistic | `outputs/yield_model/metadata.json` |
+| Test suite | 59 passed | `results/pytest.txt` |
+| Fine-tune, 109 held-out questions: base → QLoRA → QLoRA + RAG (train-only index) | answer perplexity 9.97 → 6.82 → 4.94; ROUGE-L 0.134 → 0.231 → 0.313 | `results/finetune/SUMMARY.md` |
+| LLM judge (gpt-oss-120b, same 100 questions, 1–5) | correctness: base 2.74, QLoRA 2.81 (flat: fine-tuning changed style, 95 → 30 words, not knowledge), base + RAG **3.24**. Retrieval is what makes answers more correct | `results/finetune/eval_*.json` |
+| QLoRA vs LoRA vs full (same data, T4) | peak memory 6.97 / 6.82 / 8.19 GB; test perplexity 6.82 / 6.44 / 6.31. At 0.5B, QLoRA saves no memory | `results/finetune/*_train_summary.json` |
+| Post-training quantisation of the QLoRA model | NF4: −49% memory, no perplexity loss; INT8: −34% memory, 2.8× slower | `results/finetune/eval_qlora-*.json` |
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/shashank-sj/farm-agent
-cd farm-agent
-pip install -r requirements.txt
-cp .env.example .env   # add your keys
-
-# Run the Gradio app
+git clone https://github.com/shashank-sj/farm-agent && cd farm-agent
+pip install -r requirements.txt -r requirements-ingest.txt
+cp .env.example .env                              # add GROQ_API_KEY
+python -m scripts.build_rag_index --qa-dataset    # builds data/rag_index/
 python app.py
 ```
 
-## Project Structure
+Tests: `pip install -r requirements-dev.txt && pytest` (offline — the LLM, embedder and re-ranker are faked).
+
+## Training and evaluation (Kaggle)
+
+| Notebook | GPU | What it does |
+|---|---|---|
+| `notebooks/kaggle_1_tests_rag_yield.ipynb` | optional | test suite, retrieval benchmark, yield model |
+| `notebooks/kaggle_2_finetune.ipynb` | T4 | data split, base eval, QLoRA, int8/nf4 eval, RAG eval, QLoRA vs LoRA vs full, merge + push |
+| `notebooks/kaggle_3_vision.ipynb` | T4 | reproducible split, retrain YOLOv8s-cls, held-out test metrics |
+| `notebooks/kaggle_4_judge.ipynb` | none | LLM-judge the saved answers (resumable; for when Groq's daily token limit cuts notebook 2 short) |
+
+Keys go in **Kaggle → Add-ons → Secrets** (`HF_TOKEN`, `GROQ_API_KEY`), never in notebook cells.
+
+## Project structure
 
 ```
 farm-agent/
-├── app.py                     # Gradio UI — entry point (HF Spaces ready)
+├── app.py                         # Gradio UI (HF Spaces entry point)
 ├── src/
-│   ├── agent/
-│   │   ├── graph.py           # LangGraph state machine + tool routing
-│   │   └── schemas.py         # FarmResponse — structured output schema
-│   └── tools/
-│       ├── rag_tool.py        # Knowledge base search (FAISS + Gemini)
-│       ├── vision_tool.py     # Plant/pest photo classification (YOLOv8)
-│       ├── search_tool.py     # Live web search (Tavily / DuckDuckGo)
-│       └── yield_tool.py      # Crop yield estimation
-├── mlflow/
-│   └── tracking.py            # MLflow experiment tracking
-├── .github/workflows/
-│   └── ci_cd.yml              # GitHub Actions CI/CD
-├── data/
-│   ├── knowledge_base/        # Farm PDFs/docs for RAG
-│   └── faiss_index/           # Auto-generated vector index
-├── outputs/
-│   └── farm-vision/weights/   # YOLOv8 model weights
-└── requirements.txt
+│   ├── agent/      graph.py (LangGraph), guardrails.py, schemas.py (FarmResponse)
+│   ├── tools/      rag_tool.py, vision_tool.py, search_tool.py, yield_tool.py
+│   ├── retrieval/  bm25.py, embedder.py, index.py, reranker.py, hybrid.py
+│   ├── llm/        local_llm.py (fine-tuned fallback), prompts.py (shared train/serve prompt)
+│   ├── observability/telemetry.py
+│   └── agri_qa.py  # dataset cleaning + leakage-safe grouped split (shared by RAG eval and fine-tuning)
+├── scripts/        build_rag_index.py, eval_retrieval.py, train_yield_model.py, train_vision.py
+├── finetune/       data.py, train.py, evaluate.py, metrics.py, merge_adapter.py
+├── notebooks/      Kaggle notebooks
+├── tests/          offline pytest suite
+├── data/knowledge_base/          # source documents for RAG
+└── outputs/farm-vision/weights/  # shipped YOLOv8 weights (Git LFS)
 ```
 
-## Setup Guide
+## Deployment
 
-### 1. Build the RAG Knowledge Base
-`FarmRAGTool` (`src/tools/rag_tool.py`) only *loads* `data/faiss_index/` at query time — it
-never builds it, and there's no index checked into this repo. Build one locally:
+Push to `main` → GitHub Actions runs tests + lint → rebuilds the RAG index → uploads to the HF Space.
+Set `HF_TOKEN` as a GitHub secret and `GROQ_API_KEY` (plus optional `TAVILY_API_KEY`, `LOCAL_LLM_MODEL`)
+as HF Space secrets. To ship the yield model, commit it after training:
+`git add -f outputs/yield_model/`.
 
-```bash
-pip install -r requirements-ingest.txt   # pdfplumber, pytesseract — not needed to serve the app
-python scripts/build_rag_index.py
-```
+## Environment variables
 
-Drop `.txt`/`.md`, `.pdf`, or `.png`/`.jpg` files into `data/knowledge_base/` first. The script
-chunks each with `RecursiveCharacterTextSplitter` (~800 chars, 120 overlap), embeds with
-`GoogleGenerativeAIEmbeddings`, and writes `data/faiss_index/`. PDFs get per-page text plus any
-tables (rendered as Markdown tables so row/column structure survives); a page with no
-extractable text (i.e. scanned) falls back to OCR via `pytesseract`, which also needs the
-Tesseract OCR engine installed separately (see `requirements-ingest.txt`) — pip alone won't
-install it. Note this is text retrieval, not image understanding: a photo with no text in it
-yields nothing indexable, by design. Missing an optional dependency skips that file with a
-warning instead of aborting the whole run.
-
-Without an index present, the tool falls back to a plain "knowledge base not available" message.
-
-### 2. Add the Vision Model
-Copy a trained YOLOv8 classifier weights file to:
-```
-outputs/farm-vision/weights/best.pt
-```
-
-### 3. Deploy to HuggingFace Spaces
-1. Create Space (Gradio SDK)
-2. Add `HF_TOKEN`, `GROQ_API_KEY`, `GEMINI_API_KEY` to GitHub Secrets
-3. Update `HF_SPACE` in `.github/workflows/ci_cd.yml`
-4. Push to `main` → auto-deploys
-
-> **Heads up:** `outputs/` and `data/faiss_index/` are both gitignored, and the CI/CD deploy
-> step's `ignore_patterns` additionally excludes `data/faiss_index/` on top of that — so even a
-> locally built index won't reach the Space through this pipeline as configured. To actually
-> serve RAG/vision from the Space, either commit the built index (and drop it from
-> `ignore_patterns`) or upload it directly to the Space outside of CI (e.g. `huggingface-cli
-> upload` or `huggingface_hub`'s `upload_folder`).
-
-## Environment Variables
-
-```bash
-GROQ_API_KEY=your_groq_key            # Required — agent LLM (openai/gpt-oss-20b via Groq)
-GEMINI_API_KEY=your_gemini_key        # Required — RAG embeddings
-TAVILY_API_KEY=your_tavily_key        # Optional — web search (falls back to DuckDuckGo)
-HF_TOKEN=your_hf_token                # For HF Spaces deployment
-```
-
-## Resume Bullets
-
-```
-• Built production multi-modal farm agent using LangGraph with 4 tools:
-  RAG (FAISS + Gemini embeddings), YOLOv8 vision, real-time web search,
-  and rule-based yield prediction — automatically routed based on query type
-
-• Structured every agent answer through a Pydantic schema (topic, summary,
-  recommendations with pros/cons, precautions, sources) for consistent,
-  farmer-readable output regardless of which tool answered the query
-
-• Deployed end-to-end on HuggingFace Spaces via GitHub Actions CI/CD
-  with MLflow experiment tracking across all agent interactions
-
-• System handles text queries, image uploads (plant disease/pest
-  detection), market price lookups, legal crop queries, and
-  data-driven yield predictions in a single conversational interface
-```
+See `.env.example`.

@@ -1,0 +1,41 @@
+{
+  "method": "qlora",
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "trainable_params": 8798208,
+  "total_params": 502830976,
+  "trainable_pct": 1.75,
+  "lr": 0.0002,
+  "effective_batch": 16,
+  "epochs_planned": 3.0,
+  "global_steps": 351,
+  "best_checkpoint": "outputs/finetune/qlora/checkpoints/checkpoint-250",
+  "best_eval_loss": 1.7455,
+  "best_eval_answer_perplexity": 5.728,
+  "train_minutes": 17.5,
+  "peak_gpu_mem_gb": 6.97,
+  "gpu": "Tesla T4",
+  "train_data": {
+    "kept": 1859,
+    "skipped_prompt_too_long": 0,
+    "answer_truncated": 0
+  },
+  "val_data": {
+    "kept": 114,
+    "skipped_prompt_too_long": 0,
+    "answer_truncated": 0
+  },
+  "lora": {
+    "r": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "targets": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  }
+}

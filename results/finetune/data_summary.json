@@ -1,0 +1,23 @@
+{
+  "cleaning": {
+    "raw": 22615,
+    "dropped_short_answer": 4232,
+    "dropped_long_answer": 24,
+    "dropped_duplicate": 16277,
+    "kept": 2082
+  },
+  "n_groups": 1922,
+  "split_sizes": {
+    "train": 1859,
+    "val": 114,
+    "test": 109
+  },
+  "leakage": {
+    "train/val_shared_questions": 0,
+    "train/val_shared_answers": 0,
+    "train/test_shared_questions": 0,
+    "train/test_shared_answers": 0,
+    "val/test_shared_questions": 0,
+    "val/test_shared_answers": 0
+  }
+}

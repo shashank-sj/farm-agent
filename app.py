@@ -16,7 +16,6 @@ load_dotenv()
 
 agent = None
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")  # used for RAG embeddings
 
 
 def load_agent():
@@ -24,10 +23,7 @@ def load_agent():
     if not GROQ_API_KEY:
         raise ValueError("GROQ_API_KEY not set. Add it to your .env or HF Space secrets.")
     from src.agent import FarmAgent
-    agent = FarmAgent(
-        groq_api_key=GROQ_API_KEY,
-        gemini_api_key=GEMINI_API_KEY,
-    )
+    agent = FarmAgent(groq_api_key=GROQ_API_KEY)
 
 
 try:
@@ -65,14 +61,12 @@ def chat(payload: dict, history: list):
             return history, history, EMPTY_COMPOSER
 
     try:
-        response = agent.chat(
-            message=message,
-            image_path=image_path,
-            history=history,
-        )
+        # FarmAgent.run() already falls back to the local fine-tuned model when
+        # one is configured, so reaching this except means no answer was possible.
+        response = agent.run(message=message, image_path=image_path, history=history).answer
     except Exception as e:
         err = str(e)
-        if "429" in err or "RESOURCE_EXHAUSTED" in err:
+        if "429" in err or "rate limit" in err.lower():
             response = "Too many requests right now — please wait a moment and try again."
         else:
             response = "Something went wrong. Please try again."
@@ -136,7 +130,7 @@ def feature_card_html(icon: str, title: str, desc: str) -> str:
 
 CROPS_HTML = "".join(f'<span class="crop-chip">{c}</span>' for c in CROPS)
 
-FOOTER_TEXT = "Farm Assistant · LangGraph + YOLOv8 + FAISS + Groq · Not a substitute for advice from your local KVK"
+FOOTER_TEXT = "Farm Assistant · LangGraph + YOLOv8 + hybrid RAG + Groq · Not a substitute for advice from your local KVK"
 
 
 # ── Styling ──────────────────────────────────────────────────────────────────

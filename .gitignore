@@ -1,6 +1,19 @@
 .env
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+
+# build artifacts (rebuilt in CI / on Kaggle)
+data/rag_index*/
+data/finetune/
+# results/ IS tracked (the README cites it); only the bulky per-row generations are not
+results/**/generations_*.jsonl
+mlruns/
+mlflow.db
+
+# model outputs — the shipped ones are force-added:
+#   git add -f outputs/farm-vision/weights/best.pt outputs/yield_model/
 *outputs/*
 ./outputs/*
 ./unused/*
-__pycache__/
-*.pyc

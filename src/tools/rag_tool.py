@@ -1,14 +1,18 @@
-"""FarmRAGTool — searches the farm knowledge base (FAISS + Gemini embeddings)."""
+"""FarmRAGTool — hybrid search (BM25 + FAISS + cross-encoder) over the farm knowledge base."""
 
-import os
 import logging
-from pathlib import Path
+import os
 from typing import Type
 
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from src.retrieval.embedder import DEFAULT_EMBED_MODEL
+from src.retrieval.reranker import DEFAULT_RERANK_MODEL
+
 logger = logging.getLogger("farm-tools")
+
+DEFAULT_INDEX_PATH = "data/rag_index"
 
 
 class RAGInput(BaseModel):
@@ -16,48 +20,61 @@ class RAGInput(BaseModel):
 
 
 class FarmRAGTool:
-    """Retrieval-augmented search over the farm knowledge base."""
+    """Retrieval over the farm knowledge base built by scripts/build_rag_index.py."""
 
-    def __init__(self, gemini_api_key: str, index_path: str = "data/faiss_index"):
-        self.gemini_api_key = gemini_api_key
+    def __init__(
+        self,
+        index_path: str = DEFAULT_INDEX_PATH,
+        top_n: int = 4,
+        use_reranker: bool = True,
+        embed_model: str = DEFAULT_EMBED_MODEL,
+        rerank_model: str = DEFAULT_RERANK_MODEL,
+    ):
         self.index_path = index_path
-        self._pipeline = None
+        self.top_n = top_n
+        self.use_reranker = use_reranker and os.getenv("RAG_DISABLE_RERANKER", "") != "1"
+        self.embed_model = embed_model
+        self.rerank_model = rerank_model
+        self._retriever = None
+        self.unavailable_reason = ""
 
-    def _get_pipeline(self):
-        if self._pipeline is None:
+    def _get_retriever(self):
+        """Lazy-load on first query so app start-up isn't blocked on model downloads."""
+        if self._retriever is None and not self.unavailable_reason:
             try:
-                from langchain_community.vectorstores import FAISS
-                from langchain_google_genai import GoogleGenerativeAIEmbeddings
+                from src.retrieval.embedder import SentenceTransformerEmbedder
+                from src.retrieval.hybrid import HybridRetriever
+                from src.retrieval.index import KnowledgeIndex
 
-                os.environ["GOOGLE_API_KEY"] = self.gemini_api_key
-                embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-
-                if Path(self.index_path).exists():
-                    vectorstore = FAISS.load_local(
-                        self.index_path, embeddings, allow_dangerous_deserialization=True
-                    )
-                    self._pipeline = vectorstore.as_retriever(search_kwargs={"k": 5})
-                    logger.info("RAG index loaded ✓")
-                else:
-                    logger.warning(f"RAG index not found at {self.index_path}. Using fallback.")
-                    self._pipeline = "fallback"
+                if not KnowledgeIndex.exists(self.index_path):
+                    self.unavailable_reason = f"no index at {self.index_path} (run scripts/build_rag_index.py)"
+                    logger.warning(f"RAG unavailable: {self.unavailable_reason}")
+                    return None
+                index = KnowledgeIndex.load(self.index_path, expected_embedding_model=self.embed_model)
+                embedder = SentenceTransformerEmbedder(self.embed_model)
+                reranker = None
+                if self.use_reranker:
+                    from src.retrieval.reranker import CrossEncoderReranker
+                    reranker = CrossEncoderReranker(self.rerank_model)
+                self._retriever = HybridRetriever(index, embedder, reranker)
+                logger.info(f"RAG index loaded ✓ ({len(index.chunks)} chunks, reranker={'on' if reranker else 'off'})")
             except Exception as e:
+                self.unavailable_reason = f"init error: {e}"
                 logger.error(f"RAG init error: {e}")
-                self._pipeline = "fallback"
-        return self._pipeline
+        return self._retriever
 
     def run(self, query: str) -> str:
-        pipeline = self._get_pipeline()
-        if pipeline == "fallback":
-            return "Knowledge base not available. Please build the RAG index first by uploading farm documents."
+        retriever = self._get_retriever()
+        if retriever is None:
+            return "Knowledge base not available right now. Answer only if another tool can help; otherwise say so."
         try:
-            docs = pipeline.invoke(query)
-            if not docs:
-                return "No relevant information found in knowledge base for this query."
-            context = "\n\n".join([d.page_content for d in docs[:3]])
-            return f"From knowledge base:\n{context}"
+            hits = retriever.retrieve(query, top_n=self.top_n)
         except Exception as e:
-            return f"RAG search error: {str(e)}"
+            logger.error(f"RAG search error: {e}")
+            return "Knowledge base search failed for this query."
+        if not hits:
+            return "No relevant information found in the knowledge base for this query."
+        return format_hits(hits)
 
     def as_tool(self) -> BaseTool:
         rag_instance = self
@@ -76,3 +93,11 @@ class FarmRAGTool:
                 return rag_instance.run(query)
 
         return _RAGTool()
+
+
+def format_hits(hits) -> str:
+    """Numbered passages so the LLM can cite them as [1], [2]…"""
+    blocks = ["From the knowledge base (cite passages by their number, e.g. [1]):"]
+    for n, hit in enumerate(hits, 1):
+        blocks.append(f"[{n}] (source: {hit.chunk.source})\n{hit.chunk.text.strip()}")
+    return "\n\n".join(blocks)

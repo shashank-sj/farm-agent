@@ -1,0 +1,11 @@
+# GPU fine-tuning environment (Kaggle / Colab T4). Not needed to serve the app.
+# transformers is capped below 5 because this code targets the 4.x Trainer /
+# TrainingArguments API; re-test before lifting the cap.
+transformers>=4.46,<5
+peft>=0.13
+bitsandbytes>=0.44
+accelerate>=0.34
+datasets>=2.20
+sentence-transformers>=3.0
+faiss-cpu
+groq
