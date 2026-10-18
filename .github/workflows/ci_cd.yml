@@ -12,26 +12,28 @@ env:
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true                # best.pt is stored in Git LFS
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
-      # CPU-only torch wheel: ~200 MB instead of ~2.5 GB of CUDA libraries
-      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      # CPU-only torch + torchvision from the same index: ~200 MB instead of ~2.5 GB of CUDA libraries.
+      # Installing torchvision from PyPI instead (as an ultralytics dependency) pairs a CUDA build
+      # with CPU torch and YOLO loading fails with "operator torchvision::nms does not exist".
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -r requirements-dev.txt
       - run: pytest -v
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install ruff
@@ -39,18 +41,18 @@ jobs:
 
   deploy:
     name: Build RAG index & deploy to HuggingFace Spaces
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [test, lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -r requirements.txt -r requirements-ingest.txt huggingface_hub
       # The index is a build artifact: rebuilt from source documents + the Q&A
       # dataset on every deploy instead of being committed to git.
